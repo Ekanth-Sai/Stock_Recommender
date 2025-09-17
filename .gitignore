@@ -2,3 +2,4 @@
 /frontend/package-lock.json
 /frontend/package.json
 /backend/app/model.joblib
+/frontend/node_modules
