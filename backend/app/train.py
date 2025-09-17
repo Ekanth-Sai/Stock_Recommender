@@ -26,7 +26,7 @@ def build_labels(df: pd.DataFrame, forward_window = 1, thresh = 0.005):
     return df
 
 def train(ticker = "INFY.NS", save_path = "model.joblib"):
-    raw = fetch_historical_data(ticker, period = "3y", interval = "1d")
+    raw = fetch_historical_data(ticker, period = "5y", interval = "1d")
     df = add_techincal_indicators(raw)
     df = build_labels(df, forward_window = 1, thresh = 0.007)   
 
