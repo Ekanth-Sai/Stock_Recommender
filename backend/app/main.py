@@ -8,6 +8,8 @@ from app.features import add_techincal_indicators
 import joblib 
 import os
 
+from app.features import add_techincal_indicators, simple_signal
+
 app = FastAPI()
 
 MODEL = joblib.load(os.path.join(os.path.dirname(__file__), "model.joblib"))
@@ -30,15 +32,22 @@ async def recommend(ticker: str = "INFY.NS"):
     X = last[FEATURES].to_frame().T
     probs = MODEL.predict_proba(X)[0]
     classes = MODEL.classes_
-    pred = classes[probs.argmax()]
-    conf = probs.max()
+    ml_pred = classes[probs.argmax()]
+    ml_conf = float(probs.max())
 
-    return JSONResponse({"ticker": ticker, "prediction": pred, "confidence": conf, "probs": dict(zip(classes, probs))})
+    rule_pred = simple_signal(last)
+
+    return JSONResponse({
+        "ticker": ticker,
+        "ml_prediction": ml_pred,
+        "ml_confidence": ml_conf,
+        "ml_probs": dict(zip(classes, probs)),
+        "rule_prediction": rule_pred
+    })
 
 @app.websocket("/ws/realtime/{ticker}")
 async def websocket_realtime(ws: WebSocket, ticker: str):
     await ws.accept()
-    
     try:
         while True:
             df = fetch_historical_data(ticker, period="7d", interval="1m")
@@ -54,24 +63,29 @@ async def websocket_realtime(ws: WebSocket, ticker: str):
                 await asyncio.sleep(60)
                 continue
 
-            X = df_feat[FEATURES].iloc[-1 : ].copy()
+            X = df_feat[FEATURES].iloc[-1:].copy()
             probs = MODEL.predict_proba(X)[0]
             classes = MODEL.classes_
-            pred = classes[probs.argmax()]  
-            conf = float(probs.max())
+            ml_pred = classes[probs.argmax()]
+            ml_conf = float(probs.max())
+
+            last_row = df_feat.iloc[-1]
+            rule_pred = simple_signal(last_row)
+
             ts = df_feat.index[-1].isoformat()
 
-            payload = { 
+            payload = {
                 "timestamp": ts,
                 "ticker": ticker,
                 "close": float(df_feat['close'].iloc[-1]),
                 "features": X.iloc[0].to_dict(),
-                "prediction": pred,
-                "confidence": conf,
-                "probs": dict(zip(classes, probs))
+                "ml_prediction": ml_pred,
+                "ml_confidence": ml_conf,
+                "ml_probs": dict(zip(classes, probs)),
+                "rule_prediction": rule_pred
             }
 
             await ws.send_json(payload)
-            await asyncio.sleep(60) 
-    except Exception as e: 
+            await asyncio.sleep(60)
+    except Exception as e:
         await ws.close()

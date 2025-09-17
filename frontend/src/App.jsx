@@ -35,15 +35,18 @@ function App() {
         <div style={{ width: "800px", height: "400px" }}>
             <ChartComponent dataPoints={dataPoints} />
         </div>
+        
         <div style={{ marginTop: 20 }}>
-            <h3>Recommendation</h3>
-            {prediction ? (
-            <div>
-                <strong>{prediction.pred}</strong> (conf: {(prediction.conf*100).toFixed(1)}%)
-                <pre>{JSON.stringify(prediction.probs, null, 2)}</pre>
-            </div>
-        ) : <div>No prediction yet</div>}
-        </div>
+            <h3>Recommendations</h3>
+                {prediction ? (
+                <div>   
+                    <p><strong>ML Prediction:</strong> {prediction.ml_prediction} (conf: {(prediction.ml_confidence*100).toFixed(1)}%)</p>
+                    <pre>{JSON.stringify(prediction.ml_probs, null, 2)}</pre>
+                    <p><strong>Rule-based Prediction:</strong> {prediction.rule_prediction}</p>
+                </div>
+) : <div>No prediction yet</div>}
+</div>
+
     </div>
     );
 }
