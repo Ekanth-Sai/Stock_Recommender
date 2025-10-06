@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import StockChart from './components/StockChart';
 import IndicatorsSidebar from './components/IndicatorsSidebar';
-import Prediction from './components/Prediction';
 import './App.css';
 
 function App() {
@@ -61,8 +60,7 @@ function App() {
                         <StockChart chartData={stockData.chartData} historicalIndicators={stockData.historicalIndicators} />
                     </div>
                     <aside className="sidebar">
-                        <IndicatorsSidebar indicators={stockData.indicators} />
-                        <Prediction prediction={stockData.prediction} />
+                        <IndicatorsSidebar indicators={stockData.prediction} />
                     </aside>
                 </main>
             ) : (

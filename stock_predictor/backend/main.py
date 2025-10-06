@@ -1,93 +1,93 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import yfinance as yf 
-import pandas as pd 
-import numpy as np 
-from ml_model import get_prediction_with_confidence, calculate_technical_indicators 
+import yfinance as yf
+import pandas as pd
+import numpy as np
 
-app = FastAPI() 
+from ml_model import (
+    get_prediction_with_confidence,
+    calculate_technical_indicators,
+)
+
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins = ["http://localhost:3000"],
-    allow_credentials = True,
-    allow_methods = ["*"],
-    allow_headers = ["*"],
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
+def convert_nan_to_none(obj):
+    if isinstance(obj, dict):
+        return {k: convert_nan_to_none(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_nan_to_none(elem) for elem in obj]
+    elif pd.isna(obj):
+        return None
+    return obj
 
 
 @app.get("/api/stock/{ticker}")
 async def get_stock_data(ticker: str):
     try:
+        # --- Fetch historical data ---
         stock = yf.Ticker(ticker)
-        hist_data = stock.history(period = "1y", interval = "1d")
+        hist_data = stock.history(period="1y", interval="1d")
 
         if hist_data.empty:
-            raise HTTPException(status_code = 400, detail = "Ticker not found or data unavailable")
-        
-        hist_data_with_indicators = calculate_technical_indicators(hist_data.copy())
+            raise HTTPException(
+                status_code=400,
+                detail="Ticker not found or data unavailable",
+            )
 
-        chart_data = stock.history(period = "1d", interval = "1m")
+        # --- Indicators ---
+        hist_data_with_indicators = calculate_technical_indicators(
+            hist_data.copy()
+        )
 
-        prediction_result = get_prediction_with_confidence(hist_data_with_indicators)
+        # --- Intraday chart (1m interval for latest 1 day) ---
+        chart_data = stock.history(period="1d", interval="1m")
 
+        # --- Prediction ---
+        prediction_result = get_prediction_with_confidence(
+            hist_data_with_indicators
+        )
+
+        # --- Historical indicators dict ---
+        hi = hist_data_with_indicators
         historical_indicators = {
-            "labels": hist_data_with_indicators.index.strftime("%Y-%m-%d").tolist(),
-            "close": hist_data_with_indicators["Close"].tolist(),
-            "rsi": hist_data_with_indicators["RSI_14"].tolist(),
-            "macd": hist_data_with_indicators["MACD_12_26_9"].tolist(),
-            "macdh": hist_data_with_indicators["MACDH_12_26_9"].tolist(),
-            "bb_upper": hist_data_with_indicators["BBU_5_2.0"].tolist(),
-            "bb_middle": hist_data_with_indicators["BBM_5_2.0"].tolist(),
-            "bb_lower": hist_data_with_indicators["BBL_5_2.0"].tolist(),
-            "stoch_k": hist_data_with_indicators["STOCHk_14_3_3"].tolist(),
-            "stoch_d": hist_data_with_indicators["STOCHd_14_3_3"].tolist()
+            "labels": hi.index.strftime("%Y-%m-%d").tolist(),
+            "close": hi["Close"].tolist(),
+            "rsi": hi["RSI_14"].tolist(),
+            "macd": hi["MACD_12_26_9"].tolist(),
+            "macdh": hist_data_with_indicators["MACDh_12_26_9"].tolist(),
+            "macds": hi["MACDs_12_26_9"].tolist(),
+            "bb_upper": hi["BBU_5_2.0_2.0"].tolist(),
+            "bb_middle": hi["BBM_5_2.0_2.0"].tolist(),
+            "bb_lower": hi["BBL_5_2.0_2.0"].tolist(),
+            "stoch_k": hi["STOCHk_14_3_3"].tolist(),
+            "stoch_d": hi["STOCHd_14_3_3"].tolist(),
         }
 
+        # --- Convert NaN to None for JSON compliance ---
+        historical_indicators = convert_nan_to_none(historical_indicators)
+        prediction_result = convert_nan_to_none(prediction_result)
+
+        # --- Response ---
         return {
             "chartData": {
-                "labels": chart_data.index.strftime("%H : %M").tolist(),
-                "values": chart_data["Close"].tolist()
+                "labels": chart_data.index.strftime("%H:%M").tolist(),
+                "values": chart_data["Close"].tolist(),
             },
             "historicalIndicators": historical_indicators,
             "prediction": prediction_result,
-            "indicators": {}
+            "indicators": {},  # placeholder for sidebar
         }
 
+    except HTTPException:
+        raise  # allow custom HTTP errors to propagate
     except Exception as e:
-        raise HTTPException(status_code = 500, detail = str(e))
-
-        """prediction_result = {
-            "action": "Hold",
-            "confidence": 0.5,
-            "rsi": None, "macd": None, "macdh": None, "macds": None,
-            "bb_lower": None, "bb_middle": None, "bb_upper": None,
-            "stoch_k": None, "stoch_d": None
-        }
-
-        historical_indicators = {
-            "labels": hist_data_with_indicators.index.strftime("%Y-%m-%d").tolist(),
-            "close": hist_data_with_indicators["Close"].tolist(),
-            "rsi": hist_data_with_indicators["RSI_14"].tolist(),
-            "macd": hist_data_with_indicators["MACD_12_26_9"].tolist(),
-            "macdh": hist_data_with_indicators["MACDH_12_26_9"].tolist(),
-            "macds": hist_data_with_indicators["MACDS_12_26_9"].tolist(),
-            "bb_upper": hist_data_with_indicators["BBU_5_2.0"].tolist(),
-            "bb_middle": hist_data_with_indicators["BBM_5_2.0"].tolist(),
-            "bb_lower": hist_data_with_indicators["BBL_5_2.0"].tolist(),
-            "stoch_k": hist_data_with_indicators["STOCHk_14_3_3"].tolist(),
-            "stoch_d": hist_data_with_indicators["STOCHd_14_3_3"].tolist(),
-        }"""
-
-        return {
-            "chartData": {
-                "labels": chart_data.index.strftime("%H : %M").tolist(),
-                "values": chart_data["Close"].tolist(),
-            },
-            # "historicalIndicators": historical_indicators,
-            # "prediction" : prediction_result,
-            "indicators": {}
-        }
-    except Exception as e:
-        raise HTTPException(status_code = 500, detail = str(e))
+        print(f"Unhandled error in get_stock_data: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")

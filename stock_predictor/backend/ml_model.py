@@ -1,25 +1,25 @@
-import pandas as pd 
-import pandas_ta as ta 
+import pandas as pd
+import pandas_ta as ta
 
 def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    df.ta.rsi(append = True)
-    df.ta.sma(length = 0, append = True)
-    df.ta.macd(append = True)
-    df.ta.bbands(append = True)
-    df.ta.stoch(append = True)
+    df.ta.rsi(append=True)
+    df.ta.sma(length=20, append=True)
+    df.ta.macd(append=True)
+    df.ta.bbands(append=True)
+    df.ta.stoch(append=True)
 
     return df
 
 def get_prediction_with_confidence(data: pd.DataFrame):
     latest_rsi = data["RSI_14"].iloc[-1]
     latest_macd = data["MACD_12_26_9"].iloc[-1] if "MACD_12_26_9" in data.columns else None
-    latest_macdh = data["MACDH_12_26_9"].iloc[-1] if "MACDH_12_26_9" in data.columns else None
-    latest_macds = data["MACDS_12_26_9"].iloc[-1] if "MACDS_12_26_9" in data.columns else None 
+    latest_macdh = data["MACDh_12_26_9"].iloc[-1] if "MACDh_12_26_9" in data.columns else None
+    latest_macds = data["MACDS_12_26_9"].iloc[-1] if "MACDS_12_26_9" in data.columns else None
 
-    latest_bb_lower = data["BBL_5_2.0"].iloc[-1] if "BBL_5_2.0" in data.columns else None
-    latest_bb_middle = data["BBM_5_2.0"].iloc[-1] if "BBM_5_2.0" in data.columns else None
-    latest_bb_upper = data["BBU_5_2.0"].iloc[-1] if "BBU_5_2.0" in data.columns else None
-    
+    latest_bb_lower = data["BBL_5_2.0_2.0"].iloc[-1] if "BBL_5_2.0_2.0" in data.columns else None
+    latest_bb_middle = data["BBM_5_2.0_2.0"].iloc[-1] if "BBM_5_2.0_2.0" in data.columns else None
+    latest_bb_upper = data["BBU_5_2.0_2.0"].iloc[-1] if "BBU_5_2.0_2.0" in data.columns else None
+
     latest_stoch_k = data["STOCHk_14_3_3"].iloc[-1] if "STOCHk_14_3_3" in data.columns else None
     latest_stoch_d = data["STOCHd_14_3_3"].iloc[-1] if "STOCHd_14_3_3" in data.columns else None
 
@@ -28,11 +28,15 @@ def get_prediction_with_confidence(data: pd.DataFrame):
         confidence = 0.50
     elif latest_rsi > 70:
         action = "Sell"
-        confidence = min((latest_rsi - 70) / 20, 1.0)  
+        confidence = min((latest_rsi - 70) / 30, 1.0)  # Normalize over 70-100 range
     elif latest_rsi < 30:
+        action = "Buy"
+        confidence = min((30 - latest_rsi) / 30, 1.0)  # Normalize over 0-30 range
+    else:  # 30 <= RSI <= 70
         action = "Hold"
-        confidence = 1.0 - (abs(latest_rsi - 50) / 20)
-    
+        # Confidence is higher closer to 50 (neutral)
+        confidence = 1.0 - abs(latest_rsi - 50) / 20.0
+
     return {
         "action": action,
         "confidence": round(confidence, 2),
