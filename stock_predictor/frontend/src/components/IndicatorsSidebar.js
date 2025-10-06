@@ -22,7 +22,7 @@ const IndicatorsSidebar = ({ indicators }) => {
     return (
         <div className="indicators-sidebar">
             <h3>Prediction & Indicators</h3>
-            {action && <p><strong>Action: </strong>{action}</p>}
+            {action && <p><strong>Action: </strong><span className={`action-${action.toLowerCase()}`}>{action}</span></p>}
             {confidence !== null && <p><strong>Confidence: </strong>{(confidence * 100).toFixed(2)}%</p>}
             {rsi !== null && <p><strong>RSI (14):</strong> {rsi}</p>}
             {macd !== null && <p><strong>MACD:</strong> {macd}</p>}
