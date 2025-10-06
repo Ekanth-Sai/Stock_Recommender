@@ -1,4 +1,3 @@
-// FILE: frontend/src/components/StockChart.js
 import React from 'react';
 import { Line, Bar } from 'react-chartjs-2';
 import {
@@ -27,7 +26,6 @@ ChartJS.register(
 );
 
 const StockChart = ({ chartData, historicalIndicators }) => {
-    // If historical data not loaded yet
     if (!historicalIndicators) {
         const singleChartData = {
             labels: chartData.labels,
@@ -64,7 +62,6 @@ const StockChart = ({ chartData, historicalIndicators }) => {
         stoch_d,
     } = historicalIndicators;
 
-    // --- 1️⃣ Pure Stock Price Chart ---
     const priceChartData = {
         labels,
         datasets: [
@@ -90,7 +87,6 @@ const StockChart = ({ chartData, historicalIndicators }) => {
         plugins: { title: { display: true, text: 'Stock Price (Closing Value)' } },
     };
 
-    // --- 2️⃣ Bollinger Bands Chart (Separate) ---
     const bollingerChartData = {
         labels,
         datasets: [
@@ -128,7 +124,6 @@ const StockChart = ({ chartData, historicalIndicators }) => {
         plugins: { title: { display: true, text: 'Bollinger Bands (Volatility Range)' } },
     };
 
-    // --- 3️⃣ RSI with horizontal 30 & 70 lines ---
     const rsiChartData = {
         labels,
         datasets: [
@@ -180,7 +175,6 @@ const StockChart = ({ chartData, historicalIndicators }) => {
         },
     };
 
-    // --- 4️⃣ MACD (centered at 0 + colored histogram) ---
     const macdChartData = {
         labels,
         datasets: [
@@ -222,7 +216,6 @@ const StockChart = ({ chartData, historicalIndicators }) => {
         },
     };
 
-    // --- 5️⃣ Stochastic Oscillator with 20 & 80 lines ---
     const stochChartData = {
         labels,
         datasets: [
@@ -283,12 +276,11 @@ const StockChart = ({ chartData, historicalIndicators }) => {
 
     return (
         <div>
-            {/* 🔴 Live Intraday Chart */}
             {chartData && chartData.labels && chartData.labels.length > 0 && (
                 <div style={{ marginBottom: '25px' }}>
                     <Line
                         data={{
-                            labels: chartData.labels, // HH:MM timestamps
+                            labels: chartData.labels, 
                             datasets: [
                                 {
                                     label: 'Live Price (1-min Interval)',
@@ -324,27 +316,22 @@ const StockChart = ({ chartData, historicalIndicators }) => {
                 </div>
             )}
 
-            {/* 1️⃣ Stock Price */}
             <div style={{ marginBottom: '25px' }}>
                 <Line data={priceChartData} options={priceChartOptions} />
             </div>
 
-            {/* 2️⃣ Bollinger Bands */}
             <div style={{ marginBottom: '25px' }}>
                 <Line data={bollingerChartData} options={bollingerChartOptions} />
             </div>
 
-            {/* 3️⃣ RSI */}
             <div style={{ marginBottom: '25px' }}>
                 <Line data={rsiChartData} options={rsiChartOptions} />
             </div>
 
-            {/* 4️⃣ MACD */}
             <div style={{ marginBottom: '25px' }}>
                 <Bar data={macdChartData} options={macdChartOptions} />
             </div>
 
-            {/* 5️⃣ Stochastic */}
             <div style={{ marginBottom: '25px' }}>
                 <Line data={stochChartData} options={stochChartOptions} />
             </div>

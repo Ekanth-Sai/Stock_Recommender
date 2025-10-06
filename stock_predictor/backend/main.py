@@ -32,9 +32,8 @@ def convert_nan_to_none(obj):
 @app.get("/api/stock/{ticker}")
 async def get_stock_data(ticker: str):
     try:
-        # --- Fetch historical data ---
         stock = yf.Ticker(ticker)
-        hist_data = stock.history(period="1y", interval="1d")
+        hist_data = stock.history(period="1d", interval="1m")
 
         if hist_data.empty:
             raise HTTPException(
@@ -42,23 +41,19 @@ async def get_stock_data(ticker: str):
                 detail="Ticker not found or data unavailable",
             )
 
-        # --- Indicators ---
         hist_data_with_indicators = calculate_technical_indicators(
             hist_data.copy()
         )
 
-        # --- Intraday chart (1m interval for latest 1 day) ---
         chart_data = stock.history(period="1d", interval="1m")
 
-        # --- Prediction ---
         prediction_result = get_prediction_with_confidence(
             hist_data_with_indicators
         )
 
-        # --- Historical indicators dict ---
         hi = hist_data_with_indicators
         historical_indicators = {
-            "labels": hi.index.strftime("%Y-%m-%d").tolist(),
+            "labels": hi.index.strftime("%H:%M").tolist(),
             "close": hi["Close"].tolist(),
             "rsi": hi["RSI_14"].tolist(),
             "macd": hi["MACD_12_26_9"].tolist(),
@@ -71,11 +66,9 @@ async def get_stock_data(ticker: str):
             "stoch_d": hi["STOCHd_14_3_3"].tolist(),
         }
 
-        # --- Convert NaN to None for JSON compliance ---
         historical_indicators = convert_nan_to_none(historical_indicators)
         prediction_result = convert_nan_to_none(prediction_result)
 
-        # --- Response ---
         return {
             "chartData": {
                 "labels": chart_data.index.strftime("%H:%M").tolist(),
@@ -83,11 +76,11 @@ async def get_stock_data(ticker: str):
             },
             "historicalIndicators": historical_indicators,
             "prediction": prediction_result,
-            "indicators": {},  # placeholder for sidebar
+            "indicators": {},  
         }
 
     except HTTPException:
-        raise  # allow custom HTTP errors to propagate
+        raise  
     except Exception as e:
         print(f"Unhandled error in get_stock_data: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

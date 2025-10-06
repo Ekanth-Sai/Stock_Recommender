@@ -28,13 +28,12 @@ def get_prediction_with_confidence(data: pd.DataFrame):
         confidence = 0.50
     elif latest_rsi > 70:
         action = "Sell"
-        confidence = min((latest_rsi - 70) / 30, 1.0)  # Normalize over 70-100 range
+        confidence = min((latest_rsi - 70) / 30, 1.0)  
     elif latest_rsi < 30:
         action = "Buy"
-        confidence = min((30 - latest_rsi) / 30, 1.0)  # Normalize over 0-30 range
-    else:  # 30 <= RSI <= 70
+        confidence = min((30 - latest_rsi) / 30, 1.0)  
+    else:  
         action = "Hold"
-        # Confidence is higher closer to 50 (neutral)
         confidence = 1.0 - abs(latest_rsi - 50) / 20.0
 
     return {
