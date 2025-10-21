@@ -16,8 +16,8 @@ function App() {
         { symbol: '^NSEI', name: 'NIFTY 50', note: 'Indian' },
         { symbol: '^BSESN', name: 'SENSEX', note: 'Indian' },
         { symbol: '^NSEBANK', name: 'NIFTY BANK', note: 'Indian' },
-        { symbol: '^NIFTYFIN', name: 'FINNIFTY', note: 'Indian' },
-        { symbol: '^NIFTYMIDSELECT', name: 'MIDCPNIFTY', note: 'Indian' },
+        { symbol: 'NIFTYFIN', name: 'FINNIFTY', note: 'Indian' },
+        { symbol: 'NIFTYMIDSELECT', name: 'MIDCPNIFTY', note: 'Indian' },
         { symbol: '^DJI', name: 'DOW JONES', note: 'US' },
         { symbol: '^GSPC', name: 'S&P 500', note: 'US' },
         { symbol: '^IXIC', name: 'NASDAQ', note: 'US' },
@@ -37,15 +37,15 @@ function App() {
         setLoading(true);
         setError(null);
         try {
-            // Determine if it's an index (starts with ^) or stock
-            const isIndex = ticker.startsWith('^');
+            // Determine if it's an index (starts with ^ or is an NSE-based index)
+            const isIndex = ticker.startsWith('^') || ticker === 'NIFTYFIN.NS' || ticker === 'NIFTYMIDSELECT.NS';
             const endpoint = isIndex ? 'index' : 'stock';
             
             const response = await axios.get(`http://localhost:8000/api/${endpoint}/${ticker}`);
             setStockData(response.data);
             setTickerType(isIndex ? 'index' : 'stock');
         } catch (err) {
-            const entityType = ticker.startsWith('^') ? 'index' : 'stock';
+            const entityType = ticker.startsWith('^') || ticker === 'NIFTYFIN.NS' || ticker === 'NIFTYMIDSELECT.NS' ? 'index' : 'stock';
             setError(`Failed to fetch data for ${ticker}. Please check the ${entityType} symbol.`);
             setStockData(null);
         }

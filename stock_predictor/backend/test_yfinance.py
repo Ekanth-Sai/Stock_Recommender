@@ -23,5 +23,5 @@ if __name__ == "__main__":
     test_ticker("AAPL")
     
     # Test new indices
-    test_ticker("^NIFTYFIN")
-    test_ticker("^NIFTYMIDSELECT")
+    test_ticker("NSE:CNXFINANCE")
+    test_ticker("NIFTYMIDSELECT")

@@ -34,7 +34,7 @@ def get_stock_prediction_data(ticker: str):
 
         if hist_data.empty:
             # Try alternative Indian index symbols or longer period
-            if ticker in ['^NSEI', '^BSESN', '^NSEBANK', '^NIFTYFIN', '^NIFTYMIDSELECT']:
+            if ticker in ['^NSEI', '^BSESN', '^NSEBANK', 'NSE:CNXFINANCE', 'NIFTYMIDSELECT']:
                 print(f"Trying alternative fetch for {ticker}...")
                 hist_data = stock.history(period="3mo", interval="1d")
             
