@@ -1,18 +1,27 @@
-import yfinance as yf 
-import pandas as pd 
+import yfinance as yf
+import pandas as pd
 
-try:
-    print("yfinance test")
-    stock = yf.Ticker("AAPL")
-    hist_data = stock.history(period = "1y", interval = "1d")
+def test_ticker(ticker): 
+    try:
+        print(f"Testing {ticker}...")
+        stock = yf.Ticker(ticker)
+        hist_data = stock.history(period="1y", interval="1d")
 
-    if hist_data.empty:
-        print("No historical data")
-    else:
-        print(f"Fetched {len(hist_data)} rows of data")
-        print(hist_data.head())
+        if hist_data.empty:
+            print(f"No historical data for {ticker}")
+        else:
+            print(f"Fetched {len(hist_data)} rows of data for {ticker}")
+            print(hist_data.head())
 
-except Exception as e:
-    print(f"An error occurred: {e}")
+    except Exception as e:
+        print(f"An error occurred while testing {ticker}: {e}")
 
-print(f"yfinance version: {yf.__version__}")
+if __name__ == "__main__":
+    print(f"yfinance version: {yf.__version__}")
+    
+    # Test existing stock
+    test_ticker("AAPL")
+    
+    # Test new indices
+    test_ticker("^NIFTYFIN")
+    test_ticker("^NIFTYMIDSELECT")

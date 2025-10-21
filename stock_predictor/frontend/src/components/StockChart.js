@@ -25,13 +25,13 @@ ChartJS.register(
     annotationPlugin
 );
 
-const StockChart = ({ chartData, historicalIndicators }) => {
+const StockChart = ({ chartData, historicalIndicators, intervalType = 'intraday' }) => {
     if (!historicalIndicators) {
         const singleChartData = {
             labels: chartData.labels,
             datasets: [
                 {
-                    label: 'Stock Price',
+                    label: intervalType === 'daily' ? 'Daily Price' : 'Stock Price',
                     data: chartData.values,
                     borderColor: 'rgb(75, 192, 192)',
                     backgroundColor: 'rgba(75, 192, 192, 0.5)',
@@ -42,7 +42,12 @@ const StockChart = ({ chartData, historicalIndicators }) => {
 
         const singleChartOptions = {
             responsive: true,
-            plugins: { title: { display: true, text: 'Stock Price' } },
+            plugins: { 
+                title: { 
+                    display: true, 
+                    text: intervalType === 'daily' ? 'Daily Price Data' : 'Stock Price' 
+                } 
+            },
         };
 
         return <Line data={singleChartData} options={singleChartOptions} />;
@@ -62,6 +67,10 @@ const StockChart = ({ chartData, historicalIndicators }) => {
         stoch_d,
     } = historicalIndicators;
 
+    const isDaily = intervalType === 'daily';
+    const timeLabel = isDaily ? 'Date' : 'Time (HH:MM)';
+    const priceTitle = isDaily ? 'Daily Closing Prices' : 'Intraday Price (1-Min Interval)';
+
     const priceChartData = {
         labels,
         datasets: [
@@ -70,7 +79,7 @@ const StockChart = ({ chartData, historicalIndicators }) => {
                 data: close,
                 borderColor: 'rgb(75, 192, 192)',
                 backgroundColor: 'rgba(75, 192, 192, 0.3)',
-                pointRadius: 0,
+                pointRadius: isDaily ? 3 : 0,
             },
         ],
     };
@@ -79,12 +88,24 @@ const StockChart = ({ chartData, historicalIndicators }) => {
         responsive: true,
         interaction: { mode: 'index', intersect: false },
         scales: {
+            x: {
+                title: { display: true, text: timeLabel },
+                ticks: { 
+                    autoSkip: true, 
+                    maxTicksLimit: isDaily ? 10 : 15,
+                    maxRotation: 45,
+                    minRotation: 45
+                },
+            },
             y: {
                 title: { display: true, text: 'Price' },
                 beginAtZero: false,
             },
         },
-        plugins: { title: { display: true, text: 'Stock Price (Closing Value)' } },
+        plugins: { 
+            title: { display: true, text: priceTitle },
+            legend: { display: false }
+        },
     };
 
     const bollingerChartData = {
@@ -116,6 +137,15 @@ const StockChart = ({ chartData, historicalIndicators }) => {
         responsive: true,
         interaction: { mode: 'index', intersect: false },
         scales: {
+            x: {
+                title: { display: true, text: timeLabel },
+                ticks: { 
+                    autoSkip: true, 
+                    maxTicksLimit: isDaily ? 10 : 15,
+                    maxRotation: 45,
+                    minRotation: 45
+                },
+            },
             y: {
                 title: { display: true, text: 'Bollinger Band Value' },
                 beginAtZero: false,
@@ -140,6 +170,15 @@ const StockChart = ({ chartData, historicalIndicators }) => {
     const rsiChartOptions = {
         responsive: true,
         scales: {
+            x: {
+                title: { display: true, text: timeLabel },
+                ticks: { 
+                    autoSkip: true, 
+                    maxTicksLimit: isDaily ? 10 : 15,
+                    maxRotation: 45,
+                    minRotation: 45
+                },
+            },
             y: { min: 0, max: 100, title: { display: true, text: 'RSI' } },
         },
         plugins: {
@@ -206,6 +245,15 @@ const StockChart = ({ chartData, historicalIndicators }) => {
     const macdChartOptions = {
         responsive: true,
         scales: {
+            x: {
+                title: { display: true, text: timeLabel },
+                ticks: { 
+                    autoSkip: true, 
+                    maxTicksLimit: isDaily ? 10 : 15,
+                    maxRotation: 45,
+                    minRotation: 45
+                },
+            },
             y: { title: { display: true, text: 'MACD Value' }, beginAtZero: true },
         },
         plugins: {
@@ -239,6 +287,15 @@ const StockChart = ({ chartData, historicalIndicators }) => {
     const stochChartOptions = {
         responsive: true,
         scales: {
+            x: {
+                title: { display: true, text: timeLabel },
+                ticks: { 
+                    autoSkip: true, 
+                    maxTicksLimit: isDaily ? 10 : 15,
+                    maxRotation: 45,
+                    minRotation: 45
+                },
+            },
             y: { min: 0, max: 100, title: { display: true, text: 'Stochastic Value' } },
         },
         plugins: {
@@ -276,46 +333,6 @@ const StockChart = ({ chartData, historicalIndicators }) => {
 
     return (
         <div>
-            {chartData && chartData.labels && chartData.labels.length > 0 && (
-                <div style={{ marginBottom: '25px' }}>
-                    <Line
-                        data={{
-                            labels: chartData.labels, 
-                            datasets: [
-                                {
-                                    label: 'Live Price (1-min Interval)',
-                                    data: chartData.values,
-                                    borderColor: 'rgba(0, 200, 255, 1)',
-                                    backgroundColor: 'rgba(0, 200, 255, 0.2)',
-                                    tension: 0.3,
-                                    pointRadius: 0,
-                                },
-                            ],
-                        }}
-                        options={{
-                            responsive: true,
-                            scales: {
-                                x: {
-                                    title: { display: true, text: 'Time (HH:MM)' },
-                                    ticks: { autoSkip: true, maxTicksLimit: 10 },
-                                },
-                                y: {
-                                    title: { display: true, text: 'Price' },
-                                    beginAtZero: false,
-                                },
-                            },
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: 'Live Intraday Price (1-Min Interval)',
-                                },
-                                legend: { display: false },
-                            },
-                        }}
-                    />
-                </div>
-            )}
-
             <div style={{ marginBottom: '25px' }}>
                 <Line data={priceChartData} options={priceChartOptions} />
             </div>

@@ -12,7 +12,7 @@ body {
     align-items: center;
 }
 
-.header { 
+.header {
     width: 100%;
     text-align: center;
     margin-bottom: 20px;
@@ -34,6 +34,54 @@ body {
     width: 300px;
 }
 
+.popular-indices {
+    margin-top: 15px;
+}
+
+.index-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.index-button {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: 5px;
+    border: 1px solid #444;
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.index-button:hover {
+    background-color: #3a3a3a;
+    border-color: #666;
+    transform: translateY(-2px);
+}
+
+.index-button.active {
+    background-color: #4a90e2;
+    border-color: #4a90e2;
+    color: white;
+}
+
+.index-badge {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 4px 10px;
+    font-size: 0.7em;
+    font-weight: 600;
+    background-color: #ff9800;
+    color: #121212;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
 .main-content {
     display: flex;
     width: 100%;
@@ -49,6 +97,12 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
+.chart-container h2 {
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+}
+
 .sidebar {
     width: 300px;
     flex-shrink: 0;
@@ -62,4 +116,20 @@ body {
     margin-top: 50px;
     font-size: 1.2rem;
     color: #ff4a4a;
+}
+
+/* Action colors */
+.action-buy {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+.action-sell {
+    color: #f44336;
+    font-weight: bold;
+}
+
+.action-hold {
+    color: #ff9800;
+    font-weight: bold;
 }
