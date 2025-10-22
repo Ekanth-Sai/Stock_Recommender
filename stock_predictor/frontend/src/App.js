@@ -6,12 +6,11 @@ import './App.css';
 
 function App() {
     const [ticker, setTicker] = useState('AAPL');
-    const [tickerType, setTickerType] = useState('stock'); // 'stock' or 'index'
+    const [tickerType, setTickerType] = useState('stock'); 
     const [stockData, setStockData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Popular indices for quick access
     const popularIndices = [
         { symbol: '^NSEI', name: 'NIFTY 50', note: 'Indian' },
         { symbol: '^BSESN', name: 'SENSEX', note: 'Indian' },
@@ -37,7 +36,6 @@ function App() {
         setLoading(true);
         setError(null);
         try {
-            // Determine if it's an index (starts with ^ or is an NSE-based index)
             const isIndex = ticker.startsWith('^') || ticker === 'NIFTYFIN.NS' || ticker === 'NIFTYMIDSELECT.NS';
             const endpoint = isIndex ? 'index' : 'stock';
             

@@ -179,7 +179,6 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                 <h4 className="section-title">Technical Indicators</h4>
                 <p className="section-subtitle">Click on any indicator for detailed analysis</p>
 
-                {/* RSI */}
                 {rsi !== null && detailed_analyses?.rsi && renderIndicatorCard(
                     'RSI (14)',
                     rsi,
@@ -193,7 +192,6 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                     </div>
                 )}
 
-                {/* MACD */}
                 {macd !== null && detailed_analyses?.macd && renderIndicatorCard(
                     'MACD',
                     `${macd} / ${macds}`,
@@ -216,7 +214,6 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                     </div>
                 )}
 
-                {/* Bollinger Bands */}
                 {bb_middle !== null && detailed_analyses?.bollinger_bands && renderIndicatorCard(
                     'Bollinger Bands',
                     bb_middle,
@@ -241,7 +238,6 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                     </div>
                 )}
 
-                {/* Stochastic Oscillator */}
                 {stoch_k !== null && detailed_analyses?.stochastic && renderIndicatorCard(
                     'Stochastic Oscillator',
                     `%K: ${stoch_k}`,
@@ -264,7 +260,6 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                 )}
             </div>
 
-            {/* Fallback for old data format without detailed_analyses */}
             {!detailed_analyses && (
                 <div className="legacy-indicators">
                     <h4 style={{ marginTop: '20px', marginBottom: '10px', fontSize: '1em' }}>

@@ -10,7 +10,7 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     
     # Calculate indicators with error handling
     try:
-        df.ta.rsi(append=True)
+        df.ta.rsi(length=7, append=True)
     except Exception as e:
         print(f"Could not calculate RSI: {e}")
     
@@ -50,7 +50,7 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
     """
     
     # Extract latest indicator values
-    latest_rsi = data["RSI_14"].iloc[-1] if "RSI_14" in data.columns and not data["RSI_14"].empty else None
+    latest_rsi = data["RSI_7"].iloc[-1] if "RSI_7" in data.columns and not data["RSI_7"].empty else None
     latest_macd = data["MACD_12_26_9"].iloc[-1] if "MACD_12_26_9" in data.columns and not data["MACD_12_26_9"].empty else None
     latest_macdh = data["MACDh_12_26_9"].iloc[-1] if "MACDh_12_26_9" in data.columns and not data["MACDh_12_26_9"].empty else None
     latest_macds = data["MACDS_12_26_9"].iloc[-1] if "MACDS_12_26_9" in data.columns and not data["MACDS_12_26_9"].empty else None
