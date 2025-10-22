@@ -180,7 +180,7 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                 <p className="section-subtitle">Click on any indicator for detailed analysis</p>
 
                 {rsi !== null && detailed_analyses?.rsi && renderIndicatorCard(
-                    'RSI (14)',
+                    'RSI (7)',
                     rsi,
                     detailed_analyses.rsi,
                     <div className="rsi-zones">
@@ -267,7 +267,7 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                     </h4>
                     
                     {rsi !== null && (
-                        <p><strong>RSI (14):</strong> {rsi}
+                        <p><strong>RSI (7):</strong> {rsi}
                             {rsi > 70 && <span style={{ color: '#f44336', marginLeft: '5px' }}>⚠ Overbought</span>}
                             {rsi < 30 && <span style={{ color: '#4caf50', marginLeft: '5px' }}>✓ Oversold</span>}
                         </p>

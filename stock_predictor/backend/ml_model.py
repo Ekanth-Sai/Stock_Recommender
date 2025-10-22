@@ -4,11 +4,9 @@ import os
 from indicator_analyzer import IndicatorAnalysisOrchestrator, IndicatorAnalysis
 
 def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculate technical indicators, handling cases with insufficient data"""
     if len(df) < 2:
         return df
     
-    # Calculate indicators with error handling
     try:
         df.ta.rsi(length=7, append=True)
     except Exception as e:
@@ -38,18 +36,6 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
-    """
-    Get prediction with confidence using hybrid rule-based + LLM approach
-    
-    Args:
-        data: DataFrame with calculated technical indicators
-        enable_llm: Whether to use LLM enhancement (requires GEMINI_API_KEY env var)
-    
-    Returns:
-        Dictionary with prediction, confidence, and detailed indicator analyses
-    """
-    
-    # Extract latest indicator values
     latest_rsi = data["RSI_7"].iloc[-1] if "RSI_7" in data.columns and not data["RSI_7"].empty else None
     latest_macd = data["MACD_12_26_9"].iloc[-1] if "MACD_12_26_9" in data.columns and not data["MACD_12_26_9"].empty else None
     latest_macdh = data["MACDh_12_26_9"].iloc[-1] if "MACDh_12_26_9" in data.columns and not data["MACDh_12_26_9"].empty else None
@@ -61,7 +47,6 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
     latest_stoch_d = data["STOCHd_14_3_3"].iloc[-1] if "STOCHd_14_3_3" in data.columns and not data["STOCHd_14_3_3"].empty else None
     latest_close = data["Close"].iloc[-1] if "Close" in data.columns and not data["Close"].empty else None
     
-    # Prepare indicators dictionary for analysis
     indicators = {
         'rsi': latest_rsi,
         'macd': latest_macd,
@@ -74,24 +59,19 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
         'stoch_d': latest_stoch_d,
         'close': latest_close
     }
-    
-    # Remove None values
+
     indicators = {k: v for k, v in indicators.items() if v is not None and not pd.isna(v)}
     
-    # Initialize orchestrator (LLM enhancement requires GEMINI_API_KEY environment variable)
     gemini_api_key = os.getenv('GEMINI_API_KEY')
     orchestrator = IndicatorAnalysisOrchestrator(
         llm_api_key=gemini_api_key,
         enable_llm=enable_llm and gemini_api_key is not None
     )
-    
-    # Perform comprehensive analysis
+
     analyses = orchestrator.analyze_all_indicators(indicators)
     
-    # Get overall recommendation
     overall_recommendation = orchestrator.get_overall_recommendation(analyses)
     
-    # Build response with backward compatibility
     response = {
         "action": overall_recommendation["action"],
         "confidence": overall_recommendation["confidence"],
@@ -106,7 +86,6 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
         "stoch_d": round(latest_stoch_d, 2) if latest_stoch_d is not None and not pd.isna(latest_stoch_d) else None,
     }
     
-    # Add detailed analyses
     response["detailed_analyses"] = _format_analyses_for_frontend(analyses)
     response["signal_summary"] = {
         "bullish_signals": overall_recommendation["bullish_count"],
@@ -119,7 +98,6 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
 
 
 def _format_analyses_for_frontend(analyses: dict) -> dict:
-    """Format indicator analyses for frontend consumption"""
     formatted = {}
     
     for indicator_key, analysis in analyses.items():

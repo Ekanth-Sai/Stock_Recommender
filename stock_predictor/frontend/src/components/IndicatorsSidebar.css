@@ -349,7 +349,6 @@
     font-size: 0.9em;
 }
 
-/* Action colors */
 .action-buy {
     color: #4caf50;
 }
@@ -362,7 +361,6 @@
     color: #ff9800;
 }
 
-/* Scrollbar styling */
 .indicators-sidebar::-webkit-scrollbar {
     width: 6px;
 }

@@ -158,7 +158,7 @@ const StockChart = ({ chartData, historicalIndicators, intervalType = 'intraday'
         labels,
         datasets: [
             {
-                label: 'RSI (14)',
+                label: 'RSI (7)',
                 data: rsi,
                 borderColor: 'rgb(255, 99, 132)',
                 backgroundColor: 'rgba(255, 99, 132, 0.4)',

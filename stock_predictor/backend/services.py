@@ -10,7 +10,6 @@ def convert_nan_to_none(obj):
     elif isinstance(obj, list):
         return [convert_nan_to_none(elem) for elem in obj] 
     elif isinstance(obj, (pd.DataFrame, pd.Series)):
-        # Convert DataFrame/Series to appropriate format first
         return convert_nan_to_none(obj.to_dict() if isinstance(obj, pd.Series) else obj.to_dict('list'))
     elif pd.isna(obj):
         return None 
@@ -19,21 +18,15 @@ def convert_nan_to_none(obj):
 def get_stock_prediction_data(ticker: str):
     try:
         stock = yf.Ticker(ticker)
-        
-        # Try intraday first (1-minute intervals for current day)
         hist_data = stock.history(period="1d", interval="1m")
-        
-        # If no intraday data, fall back to daily data
         if hist_data.empty:
             print(f"No intraday data for {ticker}, trying daily data...")
-            # Get at least 30 days for technical indicators (RSI needs 14+ periods)
             hist_data = stock.history(period="30d", interval="1d")
             interval_type = "daily"
         else:
             interval_type = "intraday"
 
         if hist_data.empty:
-            # Try alternative Indian index symbols or longer period
             if ticker in ['^NSEI', '^BSESN', '^NSEBANK', 'NIFTY_FIN_SERVICE.NS', 'NIFTY_MID_SELECT.NS']:
                 print(f"Trying alternative fetch for {ticker}...")
                 hist_data = stock.history(period="3mo", interval="1d")
@@ -50,7 +43,6 @@ def get_stock_prediction_data(ticker: str):
 
         hi = hist_data_with_indicators 
         
-        # Format labels based on interval type
         if interval_type == "intraday":
             labels = hi.index.strftime("%H:%M").tolist()
             chart_labels = chart_data.index.strftime("%H:%M").tolist()
@@ -61,7 +53,7 @@ def get_stock_prediction_data(ticker: str):
         historical_indicators = {
             "labels": labels,
             "close": hi["Close"].tolist(),
-            "rsi": hi["RSI_14"].tolist() if "RSI_14" in hi.columns else [],
+            "rsi": hi["RSI_7"].tolist() if "RSI_7" in hi.columns else [],
             "macd": hi["MACD_12_26_9"].tolist() if "MACD_12_26_9" in hi.columns else [],
             "macdh": hi["MACDh_12_26_9"].tolist() if "MACDh_12_26_9" in hi.columns else [],
             "macds": hi["MACDs_12_26_9"].tolist() if "MACDs_12_26_9" in hi.columns else [],
@@ -97,14 +89,10 @@ def get_stock_prediction_data(ticker: str):
 def get_index_pre_analysis_data(ticker: str):
     try:
         index_data = yf.Ticker(ticker)
-        
-        # Try intraday first (1-minute intervals for current day)
         hist_data = index_data.history(period="1d", interval="1m")
         
-        # If no intraday data, fall back to daily data
         if hist_data.empty:
             print(f"No intraday data for {ticker}, trying daily data...")
-            # Get at least 30 days for technical indicators (RSI needs 14+ periods)
             hist_data = index_data.history(period="30d", interval="1d")
             interval_type = "daily"
         else:
@@ -121,8 +109,7 @@ def get_index_pre_analysis_data(ticker: str):
         prediction_result = get_prediction_with_confidence(hist_data_with_indicators) 
 
         hi = hist_data_with_indicators 
-        
-        # Format labels based on interval type
+
         if interval_type == "intraday":
             labels = hi.index.strftime("%H:%M").tolist()
             chart_labels = chart_data.index.strftime("%H:%M").tolist()
@@ -133,7 +120,7 @@ def get_index_pre_analysis_data(ticker: str):
         historical_indicators = {
             "labels": labels,
             "close": hi["Close"].tolist(),
-            "rsi": hi["RSI_14"].tolist() if "RSI_14" in hi.columns else [],
+            "rsi": hi["RSI_7"].tolist() if "RSI_7" in hi.columns else [],
             "macd": hi["MACD_12_26_9"].tolist() if "MACD_12_26_9" in hi.columns else [],
             "macdh": hi["MACDh_12_26_9"].tolist() if "MACDh_12_26_9" in hi.columns else [],
             "macds": hi["MACDs_12_26_9"].tolist() if "MACDs_12_26_9" in hi.columns else [],

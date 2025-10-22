@@ -18,10 +18,8 @@ def test_ticker(ticker):
 
 if __name__ == "__main__":
     print(f"yfinance version: {yf.__version__}")
-    
-    # Test existing stock
+
     test_ticker("AAPL")
     
-    # Test new indices
     test_ticker("NSE:CNXFINANCE")
     test_ticker("NIFTYMIDSELECT")

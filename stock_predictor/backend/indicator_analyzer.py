@@ -1,7 +1,3 @@
-"""
-Technical Indicator Analyzer with Hybrid Rule-Based + LLM Approach
-Follows SOLID principles and OOP best practices
-"""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Optional, List
@@ -10,7 +6,6 @@ import google.generativeai as genai
 
 
 class Signal(Enum):
-    """Enumeration for trading signals"""
     BULLISH = "bullish"
     BEARISH = "bearish"
     NEUTRAL = "neutral"
@@ -20,11 +15,10 @@ class Signal(Enum):
 
 @dataclass
 class IndicatorAnalysis:
-    """Data class to hold indicator analysis results"""
     indicator_name: str
     current_value: float
     signal: Signal
-    strength: float  # 0.0 to 1.0
+    strength: float  
     rule_based_explanation: str
     llm_enhanced_explanation: Optional[str] = None
     recommendations: List[str] = None
@@ -34,26 +28,20 @@ class IndicatorAnalysis:
             self.recommendations = []
 
 
-class BaseIndicatorAnalyzer(ABC):
-    """Abstract base class for all indicator analyzers"""
-    
+class BaseIndicatorAnalyzer(ABC):    
     def __init__(self, indicator_name: str):
         self.indicator_name = indicator_name
     
     @abstractmethod
     def analyze(self, **kwargs) -> IndicatorAnalysis:
-        """Analyze the indicator and return analysis result"""
         pass
     
     @abstractmethod
     def get_context_for_llm(self, analysis: IndicatorAnalysis) -> str:
-        """Prepare context string for LLM enhancement"""
         pass
 
 
-class RSIAnalyzer(BaseIndicatorAnalyzer):
-    """Analyzer for Relative Strength Index (RSI)"""
-    
+class RSIAnalyzer(BaseIndicatorAnalyzer):    
     OVERBOUGHT_THRESHOLD = 70
     OVERSOLD_THRESHOLD = 30
     
@@ -61,7 +49,6 @@ class RSIAnalyzer(BaseIndicatorAnalyzer):
         super().__init__("RSI")
     
     def analyze(self, rsi_value: float) -> IndicatorAnalysis:
-        """Analyze RSI value using rule-based logic"""
         signal, strength, explanation, recommendations = self._evaluate_rsi(rsi_value)
         
         return IndicatorAnalysis(
@@ -74,7 +61,6 @@ class RSIAnalyzer(BaseIndicatorAnalyzer):
         )
     
     def _evaluate_rsi(self, rsi: float) -> tuple:
-        """Rule-based RSI evaluation"""
         if rsi > self.OVERBOUGHT_THRESHOLD:
             strength = min((rsi - 70) / 30, 1.0)
             signal = Signal.OVERBOUGHT
@@ -115,7 +101,6 @@ class RSIAnalyzer(BaseIndicatorAnalyzer):
         return signal, strength, explanation, recommendations
     
     def get_context_for_llm(self, analysis: IndicatorAnalysis) -> str:
-        """Prepare RSI context for LLM"""
         return (
             f"RSI Analysis: Value={analysis.current_value:.2f}, "
             f"Signal={analysis.signal.value}, Strength={analysis.strength:.2f}. "
@@ -124,13 +109,10 @@ class RSIAnalyzer(BaseIndicatorAnalyzer):
 
 
 class MACDAnalyzer(BaseIndicatorAnalyzer):
-    """Analyzer for MACD (Moving Average Convergence Divergence)"""
-    
     def __init__(self):
         super().__init__("MACD")
     
     def analyze(self, macd: float, signal: float, histogram: float) -> IndicatorAnalysis:
-        """Analyze MACD components using rule-based logic"""
         signal_type, strength, explanation, recommendations = self._evaluate_macd(
             macd, signal, histogram
         )
@@ -145,7 +127,6 @@ class MACDAnalyzer(BaseIndicatorAnalyzer):
         )
     
     def _evaluate_macd(self, macd: float, signal: float, histogram: float) -> tuple:
-        """Rule-based MACD evaluation"""
         if macd > signal and histogram > 0:
             strength = min(abs(histogram) / abs(macd) if macd != 0 else 0, 1.0)
             signal_type = Signal.BULLISH
@@ -186,21 +167,17 @@ class MACDAnalyzer(BaseIndicatorAnalyzer):
         return signal_type, strength, explanation, recommendations
     
     def get_context_for_llm(self, analysis: IndicatorAnalysis) -> str:
-        """Prepare MACD context for LLM"""
         return (
             f"MACD Analysis: Signal={analysis.signal.value}, "
             f"Strength={analysis.strength:.2f}. {analysis.rule_based_explanation}"
         )
 
 
-class BollingerBandsAnalyzer(BaseIndicatorAnalyzer):
-    """Analyzer for Bollinger Bands"""
-    
+class BollingerBandsAnalyzer(BaseIndicatorAnalyzer):    
     def __init__(self):
         super().__init__("Bollinger Bands")
     
     def analyze(self, current_price: float, upper: float, middle: float, lower: float) -> IndicatorAnalysis:
-        """Analyze Bollinger Bands using rule-based logic"""
         signal, strength, explanation, recommendations = self._evaluate_bands(
             current_price, upper, middle, lower
         )
@@ -215,11 +192,9 @@ class BollingerBandsAnalyzer(BaseIndicatorAnalyzer):
         )
     
     def _evaluate_bands(self, price: float, upper: float, middle: float, lower: float) -> tuple:
-        """Rule-based Bollinger Bands evaluation"""
         band_width = upper - lower
         band_width_pct = (band_width / middle) * 100 if middle != 0 else 0
         
-        # Position within bands
         if price >= upper:
             strength = 0.9
             signal = Signal.OVERBOUGHT
@@ -274,7 +249,6 @@ class BollingerBandsAnalyzer(BaseIndicatorAnalyzer):
         return signal, strength, explanation, recommendations
     
     def get_context_for_llm(self, analysis: IndicatorAnalysis) -> str:
-        """Prepare Bollinger Bands context for LLM"""
         return (
             f"Bollinger Bands Analysis: Signal={analysis.signal.value}, "
             f"Strength={analysis.strength:.2f}. {analysis.rule_based_explanation}"
@@ -282,8 +256,6 @@ class BollingerBandsAnalyzer(BaseIndicatorAnalyzer):
 
 
 class StochasticAnalyzer(BaseIndicatorAnalyzer):
-    """Analyzer for Stochastic Oscillator"""
-    
     OVERBOUGHT_THRESHOLD = 80
     OVERSOLD_THRESHOLD = 20
     
@@ -291,7 +263,6 @@ class StochasticAnalyzer(BaseIndicatorAnalyzer):
         super().__init__("Stochastic Oscillator")
     
     def analyze(self, k_value: float, d_value: float) -> IndicatorAnalysis:
-        """Analyze Stochastic values using rule-based logic"""
         signal, strength, explanation, recommendations = self._evaluate_stochastic(
             k_value, d_value
         )
@@ -306,7 +277,6 @@ class StochasticAnalyzer(BaseIndicatorAnalyzer):
         )
     
     def _evaluate_stochastic(self, k: float, d: float) -> tuple:
-        """Rule-based Stochastic evaluation"""
         if k > self.OVERBOUGHT_THRESHOLD and d > self.OVERBOUGHT_THRESHOLD:
             strength = min((k - 80) / 20, 1.0)
             signal = Signal.OVERBOUGHT
@@ -371,7 +341,6 @@ class StochasticAnalyzer(BaseIndicatorAnalyzer):
         return signal, strength, explanation, recommendations
     
     def get_context_for_llm(self, analysis: IndicatorAnalysis) -> str:
-        """Prepare Stochastic context for LLM"""
         return (
             f"Stochastic Analysis: %K={analysis.current_value:.2f}, "
             f"Signal={analysis.signal.value}, Strength={analysis.strength:.2f}. "
@@ -380,20 +349,15 @@ class StochasticAnalyzer(BaseIndicatorAnalyzer):
 
 
 class LLMEnhancer:
-    """Service class to enhance rule-based analysis with LLM insights"""
-    
     def __init__(self, api_key: str, model_name: str = "gemini-pro"):
-        """Initialize LLM enhancer with API credentials"""
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel(model_name)
         self.cache_enabled = True
         self._cache: Dict[str, str] = {}
     
     def enhance_analysis(self, analysis: IndicatorAnalysis, analyzer: BaseIndicatorAnalyzer) -> str:
-        """Enhance rule-based analysis with LLM-generated insights"""
         context = analyzer.get_context_for_llm(analysis)
         
-        # Check cache
         cache_key = f"{analysis.indicator_name}_{analysis.current_value}_{analysis.signal.value}"
         if self.cache_enabled and cache_key in self._cache:
             return self._cache[cache_key]
@@ -404,20 +368,18 @@ class LLMEnhancer:
             response = self.model.generate_content(prompt)
             enhanced_explanation = response.text
             
-            # Cache the result
             if self.cache_enabled:
                 self._cache[cache_key] = enhanced_explanation
             
-            # Add a log to confirm that the explanation is from Gemini
             print(f"Successfully enhanced explanation for {analysis.indicator_name} using Gemini.")
             
             return enhanced_explanation
         except Exception as e:
             print(f"LLM Enhancement failed: {e}")
-            return analysis.rule_based_explanation  # Fallback to rule-based
+            return analysis.rule_based_explanation  
     
     def _build_prompt(self, context: str, analysis: IndicatorAnalysis) -> str:
-        """Build prompt for LLM"""
+        
         return f"""You are a financial market analyst providing insights on technical indicators.
 
 Context: {context}
@@ -433,15 +395,11 @@ Task: Provide a concise, actionable explanation (2-3 sentences) that:
 Keep the tone professional but accessible. Focus on actionable insights."""
     
     def clear_cache(self):
-        """Clear the LLM response cache"""
         self._cache.clear()
 
 
 class IndicatorAnalysisOrchestrator:
-    """Orchestrates all indicator analyses with optional LLM enhancement"""
-    
     def __init__(self, llm_api_key: Optional[str] = None, enable_llm: bool = True):
-        """Initialize orchestrator with analyzers"""
         self.rsi_analyzer = RSIAnalyzer()
         self.macd_analyzer = MACDAnalyzer()
         self.bollinger_analyzer = BollingerBandsAnalyzer()
@@ -454,10 +412,8 @@ class IndicatorAnalysisOrchestrator:
             self.llm_enhancer = None
     
     def analyze_all_indicators(self, indicators: Dict) -> Dict[str, IndicatorAnalysis]:
-        """Analyze all indicators and return comprehensive results"""
         results = {}
         
-        # RSI Analysis
         if indicators.get('rsi') is not None:
             rsi_analysis = self.rsi_analyzer.analyze(rsi_value=indicators['rsi'])
             if self.enable_llm:
@@ -466,7 +422,6 @@ class IndicatorAnalysisOrchestrator:
                 )
             results['rsi'] = rsi_analysis
         
-        # MACD Analysis
         if all(k in indicators for k in ['macd', 'macds', 'macdh']):
             macd_analysis = self.macd_analyzer.analyze(
                 macd=indicators['macd'],
@@ -479,7 +434,6 @@ class IndicatorAnalysisOrchestrator:
                 )
             results['macd'] = macd_analysis
         
-        # Bollinger Bands Analysis
         if all(k in indicators for k in ['close', 'bb_upper', 'bb_middle', 'bb_lower']):
             bb_analysis = self.bollinger_analyzer.analyze(
                 current_price=indicators['close'],
@@ -493,7 +447,6 @@ class IndicatorAnalysisOrchestrator:
                 )
             results['bollinger_bands'] = bb_analysis
         
-        # Stochastic Analysis
         if all(k in indicators for k in ['stoch_k', 'stoch_d']):
             stoch_analysis = self.stochastic_analyzer.analyze(
                 k_value=indicators['stoch_k'],
@@ -508,7 +461,6 @@ class IndicatorAnalysisOrchestrator:
         return results
     
     def get_overall_recommendation(self, analyses: Dict[str, IndicatorAnalysis]) -> Dict:
-        """Generate overall recommendation based on all indicators"""
         bullish_signals = sum(1 for a in analyses.values() if a.signal == Signal.BULLISH)
         bearish_signals = sum(1 for a in analyses.values() if a.signal == Signal.BEARISH)
         overbought_signals = sum(1 for a in analyses.values() if a.signal == Signal.OVERBOUGHT)
