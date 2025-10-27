@@ -5,12 +5,10 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
     const [expandedIndicator, setExpandedIndicator] = useState(null);
 
     if (!indicators) {
-        return <div>Loading...</div>
+        return <div>Loading...</div>;
     }
 
     const {
-        action,
-        confidence,
         rsi,
         macd,
         macdh,
@@ -30,22 +28,22 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
 
     const getSignalColor = (signal) => {
         const colors = {
-            'bullish': '#4caf50',
-            'bearish': '#f44336',
-            'overbought': '#ff9800',
-            'oversold': '#2196f3',
-            'neutral': '#9e9e9e'
+            bullish: '#4caf50',
+            bearish: '#f44336',
+            overbought: '#ff9800',
+            oversold: '#2196f3',
+            neutral: '#9e9e9e'
         };
         return colors[signal] || '#9e9e9e';
     };
 
     const getSignalIcon = (signal) => {
         const icons = {
-            'bullish': '📈',
-            'bearish': '📉',
-            'overbought': '⚠️',
-            'oversold': '💡',
-            'neutral': '➖'
+            bullish: '📈',
+            bearish: '📉',
+            overbought: '⚠️',
+            oversold: '💡',
+            neutral: '➖'
         };
         return icons[signal] || '❓';
     };
@@ -57,7 +55,7 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
 
         return (
             <div className="indicator-card" key={title}>
-                <div 
+                <div
                     className="indicator-header"
                     onClick={() => toggleIndicator(title)}
                     style={{ cursor: 'pointer' }}
@@ -68,7 +66,7 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                     </div>
                     <div className="indicator-value-row">
                         <span className="indicator-value">{value}</span>
-                        <span 
+                        <span
                             className="signal-badge"
                             style={{ backgroundColor: getSignalColor(analysis.signal) }}
                         >
@@ -76,9 +74,9 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                         </span>
                     </div>
                     <div className="strength-bar-container">
-                        <div 
+                        <div
                             className="strength-bar"
-                            style={{ 
+                            style={{
                                 width: `${analysis.strength * 100}%`,
                                 backgroundColor: getSignalColor(analysis.signal)
                             }}
@@ -92,11 +90,9 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                 {isExpanded && (
                     <div className="indicator-details">
                         {additionalInfo && (
-                            <div className="additional-info">
-                                {additionalInfo}
-                            </div>
+                            <div className="additional-info">{additionalInfo}</div>
                         )}
-                        
+
                         <div className="explanation-section">
                             <h5>📊 Analysis</h5>
                             <p className="explanation-text">{analysis.explanation}</p>
@@ -123,62 +119,12 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
             <h3>
                 {tickerType === 'index' ? 'Index Analysis' : 'Stock Analysis'}
             </h3>
-            
-            {/* Overall Recommendation */}
-            <div className="overall-recommendation">
-                <div className="recommendation-header">
-                    <h4>Overall Recommendation</h4>
-                </div>
-                {action && (
-                    <div className="recommendation-content">
-                        <div className="action-display">
-                            <span className={`action-${action.toLowerCase()}`}>
-                                {action === 'Buy' ? '🟢' : action === 'Sell' ? '🔴' : '🟡'} {action}
-                            </span>
-                        </div>
-                        {confidence !== null && (
-                            <div className="confidence-display">
-                                <span className="confidence-label">Confidence:</span>
-                                <div className="confidence-bar-container">
-                                    <div 
-                                        className="confidence-bar"
-                                        style={{ width: `${confidence * 100}%` }}
-                                    />
-                                </div>
-                                <span className="confidence-value">
-                                    {(confidence * 100).toFixed(2)}%
-                                </span>
-                            </div>
-                        )}
-                        
-                        {signal_summary && (
-                            <div className="signal-summary">
-                                <div className="summary-item">
-                                    <span className="summary-icon" style={{ color: '#4caf50' }}>📈</span>
-                                    <span>Bullish: {signal_summary.bullish_signals}</span>
-                                </div>
-                                <div className="summary-item">
-                                    <span className="summary-icon" style={{ color: '#f44336' }}>📉</span>
-                                    <span>Bearish: {signal_summary.bearish_signals}</span>
-                                </div>
-                                <div className="summary-item">
-                                    <span className="summary-icon" style={{ color: '#ff9800' }}>⚠️</span>
-                                    <span>Overbought: {signal_summary.overbought_signals}</span>
-                                </div>
-                                <div className="summary-item">
-                                    <span className="summary-icon" style={{ color: '#2196f3' }}>💡</span>
-                                    <span>Oversold: {signal_summary.oversold_signals}</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
 
             <div className="indicators-list">
                 <h4 className="section-title">Technical Indicators</h4>
                 <p className="section-subtitle">Click on any indicator for detailed analysis</p>
 
+                {/* RSI */}
                 {rsi !== null && detailed_analyses?.rsi && renderIndicatorCard(
                     'RSI (7)',
                     rsi,
@@ -192,6 +138,7 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                     </div>
                 )}
 
+                {/* MACD */}
                 {macd !== null && detailed_analyses?.macd && renderIndicatorCard(
                     'MACD',
                     `${macd} / ${macds}`,
@@ -214,6 +161,7 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                     </div>
                 )}
 
+                {/* Bollinger Bands */}
                 {bb_middle !== null && detailed_analyses?.bollinger_bands && renderIndicatorCard(
                     'Bollinger Bands',
                     bb_middle,
@@ -238,6 +186,7 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                     </div>
                 )}
 
+                {/* Stochastic Oscillator */}
                 {stoch_k !== null && detailed_analyses?.stochastic && renderIndicatorCard(
                     'Stochastic Oscillator',
                     `%K: ${stoch_k}`,
@@ -258,32 +207,54 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                         </div>
                     </div>
                 )}
+
+                {/* NEW: Candle Patterns */}
+                {detailed_analyses?.candle_patterns && renderIndicatorCard(
+                    'Candle Patterns',
+                    `${detailed_analyses.candle_patterns.current_value} pattern(s)`,
+                    detailed_analyses.candle_patterns
+                )}
+
+                {/* NEW: OI PCR */}
+                {detailed_analyses?.oi_pcr && renderIndicatorCard(
+                    'OI PCR',
+                    detailed_analyses.oi_pcr.current_value.toFixed(2),
+                    detailed_analyses.oi_pcr
+                )}
+
+                {/* NEW: Market Breadth */}
+                {detailed_analyses?.market_breadth && renderIndicatorCard(
+                    'Market Breadth',
+                    `A/D Ratio: ${detailed_analyses.market_breadth.current_value.toFixed(2)}`,
+                    detailed_analyses.market_breadth
+                )}
             </div>
 
+            {/* Legacy fallback */}
             {!detailed_analyses && (
                 <div className="legacy-indicators">
                     <h4 style={{ marginTop: '20px', marginBottom: '10px', fontSize: '1em' }}>
                         Technical Indicators (Legacy View)
                     </h4>
-                    
+
                     {rsi !== null && (
                         <p><strong>RSI (7):</strong> {rsi}
                             {rsi > 70 && <span style={{ color: '#f44336', marginLeft: '5px' }}>⚠ Overbought</span>}
                             {rsi < 30 && <span style={{ color: '#4caf50', marginLeft: '5px' }}>✓ Oversold</span>}
                         </p>
                     )}
-                    
+
                     {macd !== null && <p><strong>MACD:</strong> {macd}</p>}
                     {macdh !== null && <p><strong>MACD Histogram:</strong> {macdh}</p>}
                     {macds !== null && <p><strong>MACD Signal:</strong> {macds}</p>}
-                    
+
                     <h4 style={{ marginTop: '15px', marginBottom: '10px', fontSize: '1em' }}>
                         Bollinger Bands
                     </h4>
                     {bb_upper !== null && <p><strong>Upper Band:</strong> {bb_upper}</p>}
                     {bb_middle !== null && <p><strong>Middle Band:</strong> {bb_middle}</p>}
                     {bb_lower !== null && <p><strong>Lower Band:</strong> {bb_lower}</p>}
-                    
+
                     <h4 style={{ marginTop: '15px', marginBottom: '10px', fontSize: '1em' }}>
                         Stochastic Oscillator
                     </h4>

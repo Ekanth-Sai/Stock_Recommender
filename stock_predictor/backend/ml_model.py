@@ -18,7 +18,7 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
         print(f"Could not calculate SMA: {e}")
     
     try:
-        df.ta.macd(append=True)
+        df.ta.macd(fast=8, slow=17, signal=6, append=True)
     except Exception as e:
         print(f"Could not calculate MACD: {e}")
     
@@ -37,9 +37,9 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
 def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
     latest_rsi = data["RSI_7"].iloc[-1] if "RSI_7" in data.columns and not data["RSI_7"].empty else None
-    latest_macd = data["MACD_12_26_9"].iloc[-1] if "MACD_12_26_9" in data.columns and not data["MACD_12_26_9"].empty else None
-    latest_macdh = data["MACDh_12_26_9"].iloc[-1] if "MACDh_12_26_9" in data.columns and not data["MACDh_12_26_9"].empty else None
-    latest_macds = data["MACDS_12_26_9"].iloc[-1] if "MACDS_12_26_9" in data.columns and not data["MACDS_12_26_9"].empty else None
+    latest_macd = data["MACD_8_17_6"].iloc[-1] if "MACD_8_17_6" in data.columns and not data["MACD_8_17_6"].empty else None
+    latest_macdh = data["MACDh_8_17_6"].iloc[-1] if "MACDh_8_17_6" in data.columns and not data["MACDh_8_17_6"].empty else None
+    latest_macds = data["MACDS_8_17_6"].iloc[-1] if "MACDS_8_17_6" in data.columns and not data["MACDS_8_17_6"].empty else None
     latest_bb_lower = data["BBL_5_2.0_2.0"].iloc[-1] if "BBL_5_2.0_2.0" in data.columns and not data["BBL_5_2.0_2.0"].empty else None
     latest_bb_middle = data["BBM_5_2.0_2.0"].iloc[-1] if "BBM_5_2.0_2.0" in data.columns and not data["BBM_5_2.0_2.0"].empty else None
     latest_bb_upper = data["BBU_5_2.0_2.0"].iloc[-1] if "BBU_5_2.0_2.0" in data.columns and not data["BBU_5_2.0_2.0"].empty else None
@@ -57,7 +57,12 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
         'bb_lower': latest_bb_lower,
         'stoch_k': latest_stoch_k,
         'stoch_d': latest_stoch_d,
-        'close': latest_close
+        'close': latest_close,
+        # NEW - These would typically come from NSE/BSE APIs
+        # 'oi_pcr': 1.2,  # Placeholder - fetch from NSE options chain
+        # 'advances': 1500,  # Placeholder - fetch from market breadth data
+        # 'declines': 1000,  # Placeholder
+        # 'unchanged': 100,  # Placeholder
     }
 
     indicators = {k: v for k, v in indicators.items() if v is not None and not pd.isna(v)}
@@ -70,11 +75,11 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
 
     analyses = orchestrator.analyze_all_indicators(indicators)
     
-    overall_recommendation = orchestrator.get_overall_recommendation(analyses)
+    # overall_recommendation = orchestrator.get_overall_recommendation(analyses)
     
     response = {
-        "action": overall_recommendation["action"],
-        "confidence": overall_recommendation["confidence"],
+        # "action": overall_recommendation["action"],
+        # "confidence": overall_recommendation["confidence"],
         "rsi": round(latest_rsi, 2) if latest_rsi is not None and not pd.isna(latest_rsi) else None,
         "macd": round(latest_macd, 2) if latest_macd is not None and not pd.isna(latest_macd) else None,
         "macdh": round(latest_macdh, 2) if latest_macdh is not None and not pd.isna(latest_macdh) else None,
@@ -87,12 +92,12 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
     }
     
     response["detailed_analyses"] = _format_analyses_for_frontend(analyses)
-    response["signal_summary"] = {
-        "bullish_signals": overall_recommendation["bullish_count"],
-        "bearish_signals": overall_recommendation["bearish_count"],
-        "overbought_signals": overall_recommendation["overbought_count"],
-        "oversold_signals": overall_recommendation["oversold_count"]
-    }
+    # response["signal_summary"] = {
+    #     "bullish_signals": overall_recommendation["bullish_count"],
+    #     "bearish_signals": overall_recommendation["bearish_count"],
+    #     "overbought_signals": overall_recommendation["overbought_count"],
+    #     "oversold_signals": overall_recommendation["oversold_count"]
+    # }
     
     return response
 

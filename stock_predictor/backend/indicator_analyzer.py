@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional, List
 from enum import Enum
 import google.generativeai as genai
+import pandas as pd
 
 
 class Signal(Enum):
@@ -254,7 +255,6 @@ class BollingerBandsAnalyzer(BaseIndicatorAnalyzer):
             f"Strength={analysis.strength:.2f}. {analysis.rule_based_explanation}"
         )
 
-
 class StochasticAnalyzer(BaseIndicatorAnalyzer):
     OVERBOUGHT_THRESHOLD = 80
     OVERSOLD_THRESHOLD = 20
@@ -347,7 +347,6 @@ class StochasticAnalyzer(BaseIndicatorAnalyzer):
             f"{analysis.rule_based_explanation}"
         )
 
-
 class LLMEnhancer:
     def __init__(self, api_key: str, model_name: str = "gemini-pro"):
         genai.configure(api_key=api_key)
@@ -397,13 +396,15 @@ Keep the tone professional but accessible. Focus on actionable insights."""
     def clear_cache(self):
         self._cache.clear()
 
-
 class IndicatorAnalysisOrchestrator:
     def __init__(self, llm_api_key: Optional[str] = None, enable_llm: bool = True):
         self.rsi_analyzer = RSIAnalyzer()
         self.macd_analyzer = MACDAnalyzer()
         self.bollinger_analyzer = BollingerBandsAnalyzer()
         self.stochastic_analyzer = StochasticAnalyzer()
+        self.candle_analyzer = CandlePatternAnalyzer() 
+        self.oipcr_analyzer = OIPCRAnalyzer()  
+        self.breadth_analyzer = MarketBreadthAnalyzer()
         
         self.enable_llm = enable_llm and llm_api_key is not None
         if self.enable_llm:
@@ -411,7 +412,7 @@ class IndicatorAnalysisOrchestrator:
         else:
             self.llm_enhancer = None
     
-    def analyze_all_indicators(self, indicators: Dict) -> Dict[str, IndicatorAnalysis]:
+    def analyze_all_indicators(self, indicators: Dict, hist_data: Optional['pd.DataFrame'] = None) -> Dict[str, IndicatorAnalysis]:
         results = {}
         
         if indicators.get('rsi') is not None:
@@ -457,32 +458,367 @@ class IndicatorAnalysisOrchestrator:
                     stoch_analysis, self.stochastic_analyzer
                 )
             results['stochastic'] = stoch_analysis
+
+        if hist_data is not None and not hist_data.empty:
+            candle_analysis = self.candle_analyzer.analyze(df=hist_data)
+            if self.enable_llm:
+                candle_analysis.llm_enhanced_explanation = self.llm_enhancer.enhance_analysis(
+                    candle_analysis, self.candle_analyzer
+                )
+            results['candle_patterns'] = candle_analysis
+
+        if indicators.get('oi_pcr') is not None:
+            pcr_analysis = self.oipcr_analyzer.analyze(pcr_value=indicators['oi_pcr'])
+            if self.enable_llm:
+                pcr_analysis.llm_enhanced_explanation = self.llm_enhancer.enhance_analysis(
+                    pcr_analysis, self.oipcr_analyzer
+                )
+            results['oi_pcr'] = pcr_analysis
         
+        if all(k in indicators for k in ['advances', 'declines']):
+            breadth_analysis = self.breadth_analyzer.analyze(
+                advances=indicators['advances'],
+                declines=indicators['declines'],
+                unchanged=indicators.get('unchanged', 0)
+            )
+            if self.enable_llm:
+                breadth_analysis.llm_enhanced_explanation = self.llm_enhancer.enhance_analysis(
+                    breadth_analysis, self.breadth_analyzer
+                )
+            results['market_breadth'] = breadth_analysis
+
         return results
     
-    def get_overall_recommendation(self, analyses: Dict[str, IndicatorAnalysis]) -> Dict:
-        bullish_signals = sum(1 for a in analyses.values() if a.signal == Signal.BULLISH)
-        bearish_signals = sum(1 for a in analyses.values() if a.signal == Signal.BEARISH)
-        overbought_signals = sum(1 for a in analyses.values() if a.signal == Signal.OVERBOUGHT)
-        oversold_signals = sum(1 for a in analyses.values() if a.signal == Signal.OVERSOLD)
+    # def get_overall_recommendation(self, analyses: Dict[str, IndicatorAnalysis]) -> Dict:
+    #     bullish_signals = sum(1 for a in analyses.values() if a.signal == Signal.BULLISH)
+    #     bearish_signals = sum(1 for a in analyses.values() if a.signal == Signal.BEARISH)
+    #     overbought_signals = sum(1 for a in analyses.values() if a.signal == Signal.OVERBOUGHT)
+    #     oversold_signals = sum(1 for a in analyses.values() if a.signal == Signal.OVERSOLD)
         
-        avg_strength = sum(a.strength for a in analyses.values()) / len(analyses) if analyses else 0
+    #     avg_strength = sum(a.strength for a in analyses.values()) / len(analyses) if analyses else 0
         
-        if bullish_signals > bearish_signals + overbought_signals:
-            action = "Buy"
-            confidence = avg_strength
-        elif bearish_signals > bullish_signals or overbought_signals > 1:
-            action = "Sell"
-            confidence = avg_strength
+    #     if bullish_signals > bearish_signals + overbought_signals:
+    #         action = "Buy"
+    #         confidence = avg_strength
+    #     elif bearish_signals > bullish_signals or overbought_signals > 1:
+    #         action = "Sell"
+    #         confidence = avg_strength
+    #     else:
+    #         action = "Hold"
+    #         confidence = 0.5
+        
+    #     return {
+    #         "action": action,
+    #         "confidence": round(confidence, 2),
+    #         "bullish_count": bullish_signals,
+    #         "bearish_count": bearish_signals,
+    #         "overbought_count": overbought_signals,
+    #         "oversold_count": oversold_signals
+    #     }
+
+class CandlePatternAnalyzer(BaseIndicatorAnalyzer):
+    def __init__(self):
+        super().__init__("Candle Patterns")
+    
+    def analyze(self, df: 'pd.DataFrame') -> IndicatorAnalysis:
+        patterns = self._detect_patterns(df)
+        signal, strength, explanation, recommendations = self._evaluate_patterns(patterns)
+
+        return IndicatorAnalysis(
+            indicator_name = self.indicator_name,
+            current_value = len(patterns),
+            signal = signal,
+            strength = strength,
+            rule_based_explanation = explanation,
+            recommendations = recommendations
+        )
+    
+    def _detect_patterns(self, df: 'pd.DataFrame') -> list: 
+        if len(df) < 3:
+            return [] 
+        
+        patterns = []
+
+        last_3 = df.tail(3)
+        opens = last_3['Open'].values
+        highs = last_3['High'].values
+        lows = last_3['Low'].values
+        closes = last_3['Close'].values
+
+        o, h, l, c = opens[-1], high[-1], lows[-1], closes[-1]
+        prev_o, prev_c = opens[-2], closes[-2]
+
+        body = abs(c - o)
+        upper_wick = h - max(o, c)
+        lower_wick = min(o, c) - l 
+
+        if body < (h - l) * 0.1:
+            patterns.append(("Doji", "Neutral", "Indecision in the market."))
+        
+        if c > o and lower_wick > body * 2 and upper_wick < body * 0.5:
+            patterns.append(("Hammer", "bullish", "Potential reversal upward"))
+
+        if o > c and upper_wick > body * 2 and lower_wick < body * 0.5:
+            patterns.append(("Shooting Star", "bearish", "Potential reversal downward"))
+        
+        if c > o and prev_c < prev_o and c > prev_o and o < prev_c:
+            patterns.append(("Bullish Engulfing", "bullish", "Strong bullish reversal"))
+
+        if o > c and prev_o < prev_c and o > prev_c and c < prev_o:
+            patterns.append(("Bearish Engulfing", "bearish", "Strong bearish reversal"))
+
+        if len(df) >= 3:
+            first_bearish = closes[-3] < opens[-3]
+            middle_small = abs(closes[-2] - opens[-2]) < (highs[-2] - lows[-2]) * 0.3
+            last_bullish = closes[-1] > opens[-1]
+
+            if first_bearish and middle_small and last_bullish:
+                patterns.append(("Morning Star", "bullish", "Strong bullish reversal pattern"))
+        
+        if len(df) >= 3:
+            first_bullish = closes[-3] > opens[-3]
+            middle_small = abs(closes[-2] - opens[-2]) < (highs[-2] - lows[-2]) * 0.3
+            last_bearish = closes[-1] < opens[-1]
+            
+            if first_bullish and middle_small and last_bearish:
+                patterns.append(("Evening Star", "bearish", "Strong bearish reversal pattern"))
+        
+        return patterns
+
+    def _evaluate_patterns(self, patterns: list) -> tuple:
+        if not patterns:
+            signal = Signal.NEUTRAL
+            strength = 0.5
+            explanation = "No significant candlestick patterns detected in recent price action."
+            recommendations = [
+                "Monitor for pattern formation",
+                "Wait for clearer signals",
+                "Use other indicators for confirmation"
+            ]
         else:
-            action = "Hold"
-            confidence = 0.5
+            # Count bullish vs bearish patterns
+            bullish_count = sum(1 for p in patterns if p[1] == "bullish")
+            bearish_count = sum(1 for p in patterns if p[1] == "bearish")
+            
+            if bullish_count > bearish_count:
+                signal = Signal.BULLISH
+                strength = min(bullish_count / len(patterns), 1.0)
+                pattern_names = ", ".join([p[0] for p in patterns if p[1] == "bullish"])
+                explanation = (
+                    f"Detected {bullish_count} bullish pattern(s): {pattern_names}. "
+                    f"These patterns suggest potential upward price movement."
+                )
+                recommendations = [
+                    "Look for entry opportunities",
+                    "Confirm with volume and other indicators",
+                    "Set appropriate stop-loss levels"
+                ]
+            elif bearish_count > bullish_count:
+                signal = Signal.BEARISH
+                strength = min(bearish_count / len(patterns), 1.0)
+                pattern_names = ", ".join([p[0] for p in patterns if p[1] == "bearish"])
+                explanation = (
+                    f"Detected {bearish_count} bearish pattern(s): {pattern_names}. "
+                    f"These patterns suggest potential downward price movement."
+                )
+                recommendations = [
+                    "Consider defensive positions",
+                    "Avoid new long entries",
+                    "Watch for confirmation before acting"
+                ]
+            else:
+                signal = Signal.NEUTRAL
+                strength = 0.6
+                pattern_list = ", ".join([p[0] for p in patterns])
+                explanation = (
+                    f"Detected mixed patterns: {pattern_list}. "
+                    f"Conflicting signals suggest consolidation or uncertainty."
+                )
+                recommendations = [
+                    "Wait for clearer direction",
+                    "Use other indicators for confirmation",
+                    "Avoid aggressive positions"
+                ]
         
-        return {
-            "action": action,
-            "confidence": round(confidence, 2),
-            "bullish_count": bullish_signals,
-            "bearish_count": bearish_signals,
-            "overbought_count": overbought_signals,
-            "oversold_count": oversold_signals
-        }
+        return signal, strength, explanation, recommendations
+
+    def get_context_for_llm(self, analysis: IndicatorAnalysis) -> str:
+        return (
+            f"Candle Pattern Analysis: {analysis.current_value} patterns(s) detected, "
+            f"Signal = {analysis.signal.value}, Strength = {analysis.strength:.2f}. "
+            f"{analysis.rule_based_explanation}"
+        )
+
+class OIPCRAnalyzer(BaseIndicatorAnalyzer):
+    def __init__(self):
+        super().__init__("OI PCR")
+    
+    def analyze(self, pcr_value: float) -> IndicatorAnalysis:
+        signal, strength, explanation, recommendations = self._evaluate_pcr(pcr_value)
+        
+        return IndicatorAnalysis(
+            indicator_name=self.indicator_name,
+            current_value=pcr_value,
+            signal=signal,
+            strength=strength,
+            rule_based_explanation=explanation,
+            recommendations=recommendations
+        )
+    
+    def _evaluate_pcr(self, pcr: float) -> tuple:
+        if pcr > 1.5:
+            strength = min((pcr - 1.5) / 0.5, 1.0)
+            signal = Signal.BULLISH
+            explanation = (
+                f"OI PCR is at {pcr:.2f}, significantly above 1.5. "
+                f"High put concentration suggests market participants expect a bottom, indicating bullish sentiment."
+            )
+            recommendations = [
+                "Strong bullish sentiment indicated",
+                "Look for long entry opportunities",
+                "Market may be oversold and ready for bounce"
+            ]
+        elif pcr < 0.7:
+            strength = min((0.7 - pcr) / 0.3, 1.0)
+            signal = Signal.BEARISH
+            explanation = (
+                f"OI PCR is at {pcr:.2f}, below 0.7. "
+                f"Low put concentration suggests excessive call buying, indicating potential market top."
+            )
+            recommendations = [
+                "Bearish sentiment indicated",
+                "Consider profit booking",
+                "Market may be overbought"
+            ]
+        elif pcr >= 1.0 and pcr <= 1.3:
+            strength = 0.7
+            signal = Signal.NEUTRAL
+            explanation = (
+                f"OI PCR is at {pcr:.2f}, in the balanced zone. "
+                f"Indicates neutral market sentiment with no strong directional bias."
+            )
+            recommendations = [
+                "Balanced market sentiment",
+                "Wait for clearer signals",
+                "Monitor for PCR changes"
+            ]
+        else:
+            strength = 0.6
+            signal = Signal.NEUTRAL
+            explanation = (
+                f"OI PCR is at {pcr:.2f}. "
+                f"Market sentiment is moderately balanced."
+            )
+            recommendations = [
+                "Monitor for trend development",
+                "Combine with other indicators",
+                "Maintain cautious approach"
+            ]
+        
+        return signal, strength, explanation, recommendations
+    
+    def get_context_for_llm(self, analysis: IndicatorAnalysis) -> str:
+        return (
+            f"OI PCR Analysis: Value={analysis.current_value:.2f}, "
+            f"Signal={analysis.signal.value}, Strength={analysis.strength:.2f}. "
+            f"{analysis.rule_based_explanation}"
+        )
+
+class MarketBreadthAnalyzer(BaseIndicatorAnalyzer):
+    def __init__(self):
+        super().__init__("Market Breadth")
+    
+    def analyze(self, advances: int, declines: int, unchanged: int = 0) -> IndicatorAnalysis:
+        signal, strength, explanation, recommendations = self._evaluate_breadth(
+            advances, declines, unchanged
+        )
+        
+        ad_ratio = advances / declines if declines > 0 else advances
+        
+        return IndicatorAnalysis(
+            indicator_name=self.indicator_name,
+            current_value=ad_ratio,
+            signal=signal,
+            strength=strength,
+            rule_based_explanation=explanation,
+            recommendations=recommendations
+        )
+    
+    def _evaluate_breadth(self, advances: int, declines: int, unchanged: int) -> tuple:
+        total = advances + declines + unchanged
+        if total == 0:
+            return Signal.NEUTRAL, 0.5, "No market breadth data available.", []
+        
+        advance_pct = (advances / total) * 100
+        decline_pct = (declines / total) * 100
+        ad_ratio = advances / declines if declines > 0 else advances
+        
+        if advance_pct > 70:
+            strength = min((advance_pct - 70) / 30, 1.0)
+            signal = Signal.BULLISH
+            explanation = (
+                f"Market breadth is strong with {advance_pct:.1f}% advancing stocks (A/D Ratio: {ad_ratio:.2f}). "
+                f"Broad market participation indicates healthy bullish trend."
+            )
+            recommendations = [
+                "Strong market breadth supports uptrend",
+                "Broad-based rally in progress",
+                "Good environment for long positions"
+            ]
+        elif decline_pct > 70:
+            strength = min((decline_pct - 70) / 30, 1.0)
+            signal = Signal.BEARISH
+            explanation = (
+                f"Market breadth is weak with {decline_pct:.1f}% declining stocks (A/D Ratio: {ad_ratio:.2f}). "
+                f"Broad selling pressure indicates bearish market conditions."
+            )
+            recommendations = [
+                "Weak market breadth signals broad selling",
+                "Defensive positioning recommended",
+                "Avoid aggressive long entries"
+            ]
+        elif ad_ratio > 1.5:
+            strength = 0.7
+            signal = Signal.BULLISH
+            explanation = (
+                f"Positive market breadth with A/D ratio of {ad_ratio:.2f}. "
+                f"More stocks advancing than declining, showing bullish undertone."
+            )
+            recommendations = [
+                "Positive breadth supports rally",
+                "Look for quality long setups",
+                "Monitor for breadth deterioration"
+            ]
+        elif ad_ratio < 0.67:
+            strength = 0.7
+            signal = Signal.BEARISH
+            explanation = (
+                f"Negative market breadth with A/D ratio of {ad_ratio:.2f}. "
+                f"More stocks declining than advancing, showing bearish pressure."
+            )
+            recommendations = [
+                "Negative breadth warns of weakness",
+                "Be cautious with new positions",
+                "Consider hedging strategies"
+            ]
+        else:
+            strength = 0.5
+            signal = Signal.NEUTRAL
+            explanation = (
+                f"Balanced market breadth with A/D ratio of {ad_ratio:.2f}. "
+                f"Equal distribution of advancing and declining stocks."
+            )
+            recommendations = [
+                "Neutral breadth indicates consolidation",
+                "Wait for breadth to confirm direction",
+                "Use stock-specific analysis"
+            ]
+        
+        return signal, strength, explanation, recommendations
+    
+    def get_context_for_llm(self, analysis: IndicatorAnalysis) -> str:
+        return (
+            f"Market Breadth Analysis: A/D Ratio={analysis.current_value:.2f}, "
+            f"Signal={analysis.signal.value}, Strength={analysis.strength:.2f}. "
+            f"{analysis.rule_based_explanation}"
+        )
