@@ -545,7 +545,7 @@ class CandlePatternAnalyzer(BaseIndicatorAnalyzer):
         lows = last_3['Low'].values
         closes = last_3['Close'].values
 
-        o, h, l, c = opens[-1], high[-1], lows[-1], closes[-1]
+        o, h, l, c = opens[-1], highs[-1], lows[-1], closes[-1]
         prev_o, prev_c = opens[-2], closes[-2]
 
         body = abs(c - o)
