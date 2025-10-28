@@ -39,7 +39,12 @@ def get_stock_prediction_data(ticker: str):
         
         hist_data_with_indicators = calculate_technical_indicators(hist_data.copy()) 
         chart_data = hist_data.copy()
-        prediction_result = get_prediction_with_confidence(hist_data_with_indicators) 
+        
+        prediction_result = get_prediction_with_confidence(
+            hist_data_with_indicators, 
+            enable_llm=True,
+            ticker=ticker
+        ) 
 
         hi = hist_data_with_indicators 
         
@@ -56,7 +61,7 @@ def get_stock_prediction_data(ticker: str):
             "rsi": hi["RSI_7"].tolist() if "RSI_7" in hi.columns else [],
             "macd": hi["MACD_8_17_6"].tolist() if "MACD_8_17_6" in hi.columns else [],
             "macdh": hi["MACDh_8_17_6"].tolist() if "MACDh_8_17_6" in hi.columns else [],
-            "macds": hi["MACDs_8_17_6"].tolist() if "MACDs_8_17_6" in hi.columns else [],
+            "macds": hi["MACDS_8_17_6"].tolist() if "MACDS_8_17_6" in hi.columns else [],
             "bb_upper": hi["BBU_5_2.0_2.0"].tolist() if "BBU_5_2.0_2.0" in hi.columns else [],
             "bb_lower": hi["BBL_5_2.0_2.0"].tolist() if "BBL_5_2.0_2.0" in hi.columns else [],
             "bb_middle": hi["BBM_5_2.0_2.0"].tolist() if "BBM_5_2.0_2.0" in hi.columns else [],
@@ -106,7 +111,12 @@ def get_index_pre_analysis_data(ticker: str):
         
         hist_data_with_indicators = calculate_technical_indicators(hist_data.copy()) 
         chart_data = hist_data.copy()
-        prediction_result = get_prediction_with_confidence(hist_data_with_indicators) 
+        
+        prediction_result = get_prediction_with_confidence(
+            hist_data_with_indicators,
+            enable_llm=True,
+            ticker=ticker
+        ) 
 
         hi = hist_data_with_indicators 
 
@@ -123,7 +133,7 @@ def get_index_pre_analysis_data(ticker: str):
             "rsi": hi["RSI_7"].tolist() if "RSI_7" in hi.columns else [],
             "macd": hi["MACD_8_17_6"].tolist() if "MACD_8_17_6" in hi.columns else [],
             "macdh": hi["MACDh_8_17_6"].tolist() if "MACDh_8_17_6" in hi.columns else [],
-            "macds": hi["MACDs_8_17_6"].tolist() if "MACDs_8_17_6" in hi.columns else [],
+            "macds": hi["MACDS_8_17_6"].tolist() if "MACDS_8_17_6" in hi.columns else [],
             "bb_upper": hi["BBU_5_2.0_2.0"].tolist() if "BBU_5_2.0_2.0" in hi.columns else [],
             "bb_lower": hi["BBL_5_2.0_2.0"].tolist() if "BBL_5_2.0_2.0" in hi.columns else [],
             "bb_middle": hi["BBM_5_2.0_2.0"].tolist() if "BBM_5_2.0_2.0" in hi.columns else [],

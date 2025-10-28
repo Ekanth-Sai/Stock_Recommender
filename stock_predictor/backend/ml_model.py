@@ -3,6 +3,21 @@ import pandas_ta as ta
 import os
 from indicator_analyzer import IndicatorAnalysisOrchestrator, IndicatorAnalysis
 
+# Import data fetchers - use try/except in case file doesn't exist yet
+try:
+    from data_fetchers import fetch_oi_pcr, fetch_market_breadth
+    DATA_FETCHERS_AVAILABLE = True
+except ImportError:
+    print("data_fetchers.py not found. OI PCR and Market Breadth will not be available.")
+    DATA_FETCHERS_AVAILABLE = False
+    
+    def fetch_oi_pcr(ticker=None):
+        return None
+    
+    def fetch_market_breadth(ticker=None):
+        return None
+
+
 def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     if len(df) < 2:
         return df
@@ -35,7 +50,15 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
+def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, ticker: str = None):
+    """
+    Get prediction with confidence scores and detailed analysis.
+    
+    Args:
+        data: DataFrame with technical indicators calculated
+        enable_llm: Whether to use LLM for enhanced explanations
+        ticker: Stock/index ticker symbol (for fetching OI PCR and market breadth)
+    """
     latest_rsi = data["RSI_7"].iloc[-1] if "RSI_7" in data.columns and not data["RSI_7"].empty else None
     latest_macd = data["MACD_8_17_6"].iloc[-1] if "MACD_8_17_6" in data.columns and not data["MACD_8_17_6"].empty else None
     latest_macdh = data["MACDh_8_17_6"].iloc[-1] if "MACDh_8_17_6" in data.columns and not data["MACDh_8_17_6"].empty else None
@@ -58,13 +81,29 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
         'stoch_k': latest_stoch_k,
         'stoch_d': latest_stoch_d,
         'close': latest_close,
-        # NEW - These would typically come from NSE/BSE APIs
-        # 'oi_pcr': 1.2,  # Placeholder - fetch from NSE options chain
-        # 'advances': 1500,  # Placeholder - fetch from market breadth data
-        # 'declines': 1000,  # Placeholder
-        # 'unchanged': 100,  # Placeholder
     }
 
+    # FIXED: Fetch OI PCR and Market Breadth data if available
+    if DATA_FETCHERS_AVAILABLE and ticker:
+        try:
+            oi_pcr = fetch_oi_pcr(ticker)
+            if oi_pcr is not None:
+                indicators['oi_pcr'] = oi_pcr
+                print(f"✓ OI PCR fetched: {oi_pcr:.2f}")
+        except Exception as e:
+            print(f"Could not fetch OI PCR data: {e}")
+        
+        try:
+            breadth = fetch_market_breadth(ticker)
+            if breadth:
+                indicators['advances'] = breadth.get('advances')
+                indicators['declines'] = breadth.get('declines')
+                indicators['unchanged'] = breadth.get('unchanged', 0)
+                print(f"✓ Market Breadth fetched: A={breadth.get('advances')}, D={breadth.get('declines')}")
+        except Exception as e:
+            print(f"Could not fetch market breadth data: {e}")
+
+    # Remove None values
     indicators = {k: v for k, v in indicators.items() if v is not None and not pd.isna(v)}
     
     gemini_api_key = os.getenv('GEMINI_API_KEY')
@@ -73,13 +112,10 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
         enable_llm=enable_llm and gemini_api_key is not None
     )
 
-    analyses = orchestrator.analyze_all_indicators(indicators)
-    
-    # overall_recommendation = orchestrator.get_overall_recommendation(analyses)
+    # FIXED: Pass hist_data to enable candle pattern analysis
+    analyses = orchestrator.analyze_all_indicators(indicators, hist_data=data)
     
     response = {
-        # "action": overall_recommendation["action"],
-        # "confidence": overall_recommendation["confidence"],
         "rsi": round(latest_rsi, 2) if latest_rsi is not None and not pd.isna(latest_rsi) else None,
         "macd": round(latest_macd, 2) if latest_macd is not None and not pd.isna(latest_macd) else None,
         "macdh": round(latest_macdh, 2) if latest_macdh is not None and not pd.isna(latest_macdh) else None,
@@ -92,17 +128,14 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True):
     }
     
     response["detailed_analyses"] = _format_analyses_for_frontend(analyses)
-    # response["signal_summary"] = {
-    #     "bullish_signals": overall_recommendation["bullish_count"],
-    #     "bearish_signals": overall_recommendation["bearish_count"],
-    #     "overbought_signals": overall_recommendation["overbought_count"],
-    #     "oversold_signals": overall_recommendation["oversold_count"]
-    # }
     
     return response
 
 
 def _format_analyses_for_frontend(analyses: dict) -> dict:
+    """
+    Format analysis results for frontend display.
+    """
     formatted = {}
     
     for indicator_key, analysis in analyses.items():
