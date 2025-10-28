@@ -3,7 +3,6 @@ import pandas_ta as ta
 import os
 from indicator_analyzer import IndicatorAnalysisOrchestrator, IndicatorAnalysis
 
-# Import data fetchers - use try/except in case file doesn't exist yet
 try:
     from data_fetchers import fetch_oi_pcr, fetch_market_breadth
     DATA_FETCHERS_AVAILABLE = True
