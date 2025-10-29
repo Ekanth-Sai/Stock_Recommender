@@ -116,9 +116,7 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
 
     return (
         <div className="indicators-sidebar">
-            <h3>
-                {tickerType === 'index' ? 'Index Analysis' : 'Stock Analysis'}
-            </h3>
+            <h3>{tickerType === 'index' ? 'Index Analysis' : 'Stock Analysis'}</h3>
 
             <div className="indicators-list">
                 <h4 className="section-title">Technical Indicators</h4>
@@ -234,9 +232,69 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
 
                 {/* NEW: Market Breadth */}
                 {detailed_analyses?.market_breadth && renderIndicatorCard(
-                    'Market Breadth',
+                    detailed_analyses.market_breadth.breadth_type === 'contextual'
+                        ? `Market Breadth (${detailed_analyses.market_breadth.reference_index})`
+                        : 'Market Breadth',
                     `A/D Ratio: ${detailed_analyses.market_breadth.current_value.toFixed(2)}`,
-                    detailed_analyses.market_breadth
+                    detailed_analyses.market_breadth,
+                    <div className="breadth-details">
+                        {detailed_analyses.market_breadth.breadth_type === 'contextual' && (
+                            <div
+                                className="context-badge"
+                                style={{
+                                    padding: '8px',
+                                    background: 'rgba(255, 152, 0, 0.1)',
+                                    borderRadius: '4px',
+                                    marginBottom: '10px',
+                                    borderLeft: '3px solid #ff9800'
+                                }}
+                            >
+                                <span style={{ fontSize: '0.85em', color: '#ff9800' }}>
+                                    📊 Contextual Breadth from {detailed_analyses.market_breadth.reference_index}
+                                </span>
+                            </div>
+                        )}
+                        <div className="bb-row">
+                            <span>Advancing:</span>
+                            <strong style={{ color: '#4caf50' }}>{indicators.advances || 'N/A'}</strong>
+                        </div>
+                        <div className="bb-row">
+                            <span>Declining:</span>
+                            <strong style={{ color: '#f44336' }}>{indicators.declines || 'N/A'}</strong>
+                        </div>
+                        <div className="bb-row">
+                            <span>Unchanged:</span>
+                            <strong>{indicators.unchanged || 0}</strong>
+                        </div>
+                        <div className="bb-row">
+                            <span>A/D Ratio:</span>
+                            <strong
+                                style={{
+                                    color:
+                                        detailed_analyses.market_breadth.current_value > 1
+                                            ? '#4caf50'
+                                            : '#f44336'
+                                }}
+                            >
+                                {detailed_analyses.market_breadth.current_value.toFixed(2)}
+                            </strong>
+                        </div>
+                        {detailed_analyses.market_breadth.breadth_type === 'contextual' && (
+                            <div
+                                style={{
+                                    marginTop: '10px',
+                                    padding: '8px',
+                                    background: 'rgba(74, 144, 226, 0.05)',
+                                    borderRadius: '4px',
+                                    fontSize: '0.8em',
+                                    color: '#b0b0b0'
+                                }}
+                            >
+                                ℹ️ This breadth data reflects the overall market sentiment from the parent index,
+                                providing context for individual stock analysis.
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
 
@@ -248,7 +306,8 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                     </h4>
 
                     {rsi !== null && (
-                        <p><strong>RSI (7):</strong> {rsi}
+                        <p>
+                            <strong>RSI (7):</strong> {rsi}
                             {rsi > 70 && <span style={{ color: '#f44336', marginLeft: '5px' }}>⚠ Overbought</span>}
                             {rsi < 30 && <span style={{ color: '#4caf50', marginLeft: '5px' }}>✓ Oversold</span>}
                         </p>
@@ -269,7 +328,8 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
                         Stochastic Oscillator
                     </h4>
                     {stoch_k !== null && (
-                        <p><strong>%K:</strong> {stoch_k}
+                        <p>
+                            <strong>%K:</strong> {stoch_k}
                             {stoch_k > 80 && <span style={{ color: '#f44336', marginLeft: '5px' }}>⚠ Overbought</span>}
                             {stoch_k < 20 && <span style={{ color: '#4caf50', marginLeft: '5px' }}>✓ Oversold</span>}
                         </p>

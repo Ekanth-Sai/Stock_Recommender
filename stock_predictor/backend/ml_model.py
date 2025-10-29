@@ -4,7 +4,7 @@ import os
 from indicator_analyzer import IndicatorAnalysisOrchestrator, IndicatorAnalysis
 
 try:
-    from data_fetchers import fetch_oi_pcr, fetch_market_breadth
+    from data_fetchers import fetch_oi_pcr, fetch_market_breadth_enhanced
     DATA_FETCHERS_AVAILABLE = True
 except ImportError:
     print("data_fetchers.py not found. OI PCR and Market Breadth will not be available.")
@@ -13,7 +13,7 @@ except ImportError:
     def fetch_oi_pcr(ticker=None):
         return None
     
-    def fetch_market_breadth(ticker=None):
+    def fetch_market_breadth_enhanced(ticker=None):
         return None
 
 
@@ -75,6 +75,7 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, 
     }
 
     if DATA_FETCHERS_AVAILABLE and ticker:
+        # Fetch OI PCR (only for Indian indices)
         try:
             oi_pcr = fetch_oi_pcr(ticker)
             if oi_pcr is not None:
@@ -83,15 +84,27 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, 
         except Exception as e:
             print(f"Could not fetch OI PCR data: {e}")
         
+        # Fetch Enhanced Market Breadth (works for both indices and stocks)
         try:
-            breadth = fetch_market_breadth(ticker)
+            breadth = fetch_market_breadth_enhanced(ticker)
             if breadth:
                 indicators['advances'] = breadth.get('advances')
                 indicators['declines'] = breadth.get('declines')
                 indicators['unchanged'] = breadth.get('unchanged', 0)
-                print(f"✓ Market Breadth fetched: A={breadth.get('advances')}, D={breadth.get('declines')}")
+                indicators['breadth_type'] = breadth.get('type', 'direct')
+                indicators['breadth_reference_index'] = breadth.get('reference_index')
+                indicators['breadth_ticker'] = breadth.get('ticker', ticker)
+                
+                breadth_type = breadth.get('type', 'direct')
+                ref_index = breadth.get('reference_index', ticker)
+                
+                print(f"✓ Market Breadth fetched ({breadth_type}): "
+                      f"A={breadth.get('advances')}, D={breadth.get('declines')} "
+                      f"[Reference: {ref_index}]")
         except Exception as e:
             print(f"Could not fetch market breadth data: {e}")
+            import traceback
+            traceback.print_exc()
 
     indicators = {k: v for k, v in indicators.items() if v is not None and not pd.isna(v)}
     
@@ -114,6 +127,9 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, 
         "stoch_k": round(latest_stoch_k, 2) if latest_stoch_k is not None and not pd.isna(latest_stoch_k) else None,
         "stoch_d": round(latest_stoch_d, 2) if latest_stoch_d is not None and not pd.isna(latest_stoch_d) else None,
         "oi_pcr": indicators.get('oi_pcr'),
+        "advances": indicators.get('advances'),
+        "declines": indicators.get('declines'),
+        "unchanged": indicators.get('unchanged'),
     }
     
     response["detailed_analyses"] = _format_analyses_for_frontend(analyses)

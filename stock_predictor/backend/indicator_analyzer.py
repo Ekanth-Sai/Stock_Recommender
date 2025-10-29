@@ -28,7 +28,6 @@ class IndicatorAnalysis:
         if self.recommendations is None:
             self.recommendations = []
 
-
 class BaseIndicatorAnalyzer(ABC):    
     def __init__(self, indicator_name: str):
         self.indicator_name = indicator_name
@@ -40,7 +39,6 @@ class BaseIndicatorAnalyzer(ABC):
     @abstractmethod
     def get_context_for_llm(self, analysis: IndicatorAnalysis) -> str:
         pass
-
 
 class RSIAnalyzer(BaseIndicatorAnalyzer):    
     OVERBOUGHT_THRESHOLD = 70
@@ -108,7 +106,6 @@ class RSIAnalyzer(BaseIndicatorAnalyzer):
             f"{analysis.rule_based_explanation}"
         )
 
-
 class MACDAnalyzer(BaseIndicatorAnalyzer):
     def __init__(self):
         super().__init__("MACD")
@@ -172,7 +169,6 @@ class MACDAnalyzer(BaseIndicatorAnalyzer):
             f"MACD Analysis: Signal={analysis.signal.value}, "
             f"Strength={analysis.strength:.2f}. {analysis.rule_based_explanation}"
         )
-
 
 class BollingerBandsAnalyzer(BaseIndicatorAnalyzer):    
     def __init__(self):
@@ -479,8 +475,12 @@ class IndicatorAnalysisOrchestrator:
             breadth_analysis = self.breadth_analyzer.analyze(
                 advances=indicators['advances'],
                 declines=indicators['declines'],
-                unchanged=indicators.get('unchanged', 0)
+                unchanged=indicators.get('unchanged', 0),
+                breadth_type=indicators.get('breadth_type', 'direct'),
+                reference_index=indicators.get('breadth_reference_index'),
+                ticker=indicators.get('breadth_ticker')
             )
+            
             if self.enable_llm:
                 breadth_analysis.llm_enhanced_explanation = self.llm_enhancer.enhance_analysis(
                     breadth_analysis, self.breadth_analyzer
@@ -728,9 +728,22 @@ class MarketBreadthAnalyzer(BaseIndicatorAnalyzer):
     def __init__(self):
         super().__init__("Market Breadth")
     
-    def analyze(self, advances: int, declines: int, unchanged: int = 0) -> IndicatorAnalysis:
+    def analyze(self, advances: int, declines: int, unchanged: int = 0, 
+                breadth_type: str = 'direct', reference_index: str = None,
+                ticker: str = None) -> IndicatorAnalysis:
+        """
+        Analyze market breadth with context awareness.
+        
+        Args:
+            advances: Number of advancing stocks
+            declines: Number of declining stocks
+            unchanged: Number of unchanged stocks
+            breadth_type: 'direct' for indices, 'contextual' for stocks
+            reference_index: Parent index if breadth_type is 'contextual'
+            ticker: Stock ticker if breadth_type is 'contextual'
+        """
         signal, strength, explanation, recommendations = self._evaluate_breadth(
-            advances, declines, unchanged
+            advances, declines, unchanged, breadth_type, reference_index, ticker
         )
         
         ad_ratio = advances / declines if declines > 0 else advances
@@ -744,7 +757,8 @@ class MarketBreadthAnalyzer(BaseIndicatorAnalyzer):
             recommendations=recommendations
         )
     
-    def _evaluate_breadth(self, advances: int, declines: int, unchanged: int) -> tuple:
+    def _evaluate_breadth(self, advances: int, declines: int, unchanged: int,
+                          breadth_type: str, reference_index: str, ticker: str) -> tuple:
         total = advances + declines + unchanged
         if total == 0:
             return Signal.NEUTRAL, 0.5, "No market breadth data available.", []
@@ -753,68 +767,106 @@ class MarketBreadthAnalyzer(BaseIndicatorAnalyzer):
         decline_pct = (declines / total) * 100
         ad_ratio = advances / declines if declines > 0 else advances
         
+        # Base context string
+        if breadth_type == 'contextual' and reference_index:
+            index_name = self._get_index_name(reference_index)
+            context_prefix = f"{index_name} market breadth"
+            stock_context = f" This provides background sentiment for {ticker}."
+        else:
+            context_prefix = "Market breadth"
+            stock_context = ""
+        
+        # Determine signal and strength
         if advance_pct > 70:
             strength = min((advance_pct - 70) / 30, 1.0)
             signal = Signal.BULLISH
             explanation = (
-                f"Market breadth is strong with {advance_pct:.1f}% advancing stocks (A/D Ratio: {ad_ratio:.2f}). "
-                f"Broad market participation indicates healthy bullish trend."
+                f"{context_prefix} is strong with {advance_pct:.1f}% advancing stocks (A/D Ratio: {ad_ratio:.2f}). "
+                f"Broad market participation indicates healthy bullish trend.{stock_context}"
             )
             recommendations = [
                 "Strong market breadth supports uptrend",
                 "Broad-based rally in progress",
                 "Good environment for long positions"
             ]
+            if breadth_type == 'contextual':
+                recommendations.append(f"Index-wide strength provides tailwind for {ticker}")
+                
         elif decline_pct > 70:
             strength = min((decline_pct - 70) / 30, 1.0)
             signal = Signal.BEARISH
             explanation = (
-                f"Market breadth is weak with {decline_pct:.1f}% declining stocks (A/D Ratio: {ad_ratio:.2f}). "
-                f"Broad selling pressure indicates bearish market conditions."
+                f"{context_prefix} is weak with {decline_pct:.1f}% declining stocks (A/D Ratio: {ad_ratio:.2f}). "
+                f"Broad selling pressure indicates bearish market conditions.{stock_context}"
             )
             recommendations = [
                 "Weak market breadth signals broad selling",
                 "Defensive positioning recommended",
                 "Avoid aggressive long entries"
             ]
+            if breadth_type == 'contextual':
+                recommendations.append(f"Index-wide weakness may pressure {ticker}")
+                
         elif ad_ratio > 1.5:
             strength = 0.7
             signal = Signal.BULLISH
             explanation = (
-                f"Positive market breadth with A/D ratio of {ad_ratio:.2f}. "
-                f"More stocks advancing than declining, showing bullish undertone."
+                f"Positive {context_prefix.lower()} with A/D ratio of {ad_ratio:.2f}. "
+                f"More stocks advancing than declining, showing bullish undertone.{stock_context}"
             )
             recommendations = [
                 "Positive breadth supports rally",
                 "Look for quality long setups",
                 "Monitor for breadth deterioration"
             ]
+            if breadth_type == 'contextual':
+                recommendations.append(f"{ticker} benefits from positive market sentiment")
+                
         elif ad_ratio < 0.67:
             strength = 0.7
             signal = Signal.BEARISH
             explanation = (
-                f"Negative market breadth with A/D ratio of {ad_ratio:.2f}. "
-                f"More stocks declining than advancing, showing bearish pressure."
+                f"Negative {context_prefix.lower()} with A/D ratio of {ad_ratio:.2f}. "
+                f"More stocks declining than advancing, showing bearish pressure.{stock_context}"
             )
             recommendations = [
                 "Negative breadth warns of weakness",
                 "Be cautious with new positions",
                 "Consider hedging strategies"
             ]
+            if breadth_type == 'contextual':
+                recommendations.append(f"{ticker} faces headwinds from weak market sentiment")
+                
         else:
             strength = 0.5
             signal = Signal.NEUTRAL
             explanation = (
-                f"Balanced market breadth with A/D ratio of {ad_ratio:.2f}. "
-                f"Equal distribution of advancing and declining stocks."
+                f"Balanced {context_prefix.lower()} with A/D ratio of {ad_ratio:.2f}. "
+                f"Equal distribution of advancing and declining stocks.{stock_context}"
             )
             recommendations = [
                 "Neutral breadth indicates consolidation",
                 "Wait for breadth to confirm direction",
                 "Use stock-specific analysis"
             ]
+            if breadth_type == 'contextual':
+                recommendations.append(f"{ticker} should be evaluated on its own merits")
         
         return signal, strength, explanation, recommendations
+    
+    def _get_index_name(self, index_ticker: str) -> str:
+        """Get human-readable index name."""
+        names = {
+            '^NSEI': 'NIFTY 50',
+            '^BSESN': 'SENSEX',
+            '^NSEBANK': 'NIFTY BANK',
+            'NIFTY_FIN_SERVICE.NS': 'FINNIFTY',
+            'NIFTY_MID_SELECT.NS': 'MIDCPNIFTY',
+            '^GSPC': 'S&P 500',
+            '^DJI': 'DOW JONES',
+            '^IXIC': 'NASDAQ',
+        }
+        return names.get(index_ticker, index_ticker)
     
     def get_context_for_llm(self, analysis: IndicatorAnalysis) -> str:
         return (
@@ -822,3 +874,6 @@ class MarketBreadthAnalyzer(BaseIndicatorAnalyzer):
             f"Signal={analysis.signal.value}, Strength={analysis.strength:.2f}. "
             f"{analysis.rule_based_explanation}"
         )
+
+
+

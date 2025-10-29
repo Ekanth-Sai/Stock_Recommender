@@ -166,6 +166,74 @@ class YFinanceDataFetcher:
             return None
 
 
+# Stock to Index Mapping
+STOCK_TO_INDEX_MAP = {
+    # Indian Stocks -> NIFTY 50
+    'RELIANCE.NS': '^NSEI',
+    'TCS.NS': '^NSEI',
+    'INFY.NS': '^NSEI',
+    'HDFCBANK.NS': '^NSEI',
+    'ICICIBANK.NS': '^NSEI',
+    'BHARTIARTL.NS': '^NSEI',
+    'SBIN.NS': '^NSEI',
+    'HINDUNILVR.NS': '^NSEI',
+    'ITC.NS': '^NSEI',
+    'KOTAKBANK.NS': '^NSEI',
+    'LT.NS': '^NSEI',
+    'AXISBANK.NS': '^NSEI',
+    'BAJFINANCE.NS': '^NSEI',
+    'ASIANPAINT.NS': '^NSEI',
+    'MARUTI.NS': '^NSEI',
+    'TITAN.NS': '^NSEI',
+    'ULTRACEMCO.NS': '^NSEI',
+    'NESTLEIND.NS': '^NSEI',
+    'WIPRO.NS': '^NSEI',
+    'TECHM.NS': '^NSEI',
+    'ADANIPORTS.NS': '^NSEI',
+    'SUNPHARMA.NS': '^NSEI',
+    'ONGC.NS': '^NSEI',
+    'NTPC.NS': '^NSEI',
+    'POWERGRID.NS': '^NSEI',
+    'TATASTEEL.NS': '^NSEI',
+    'JSWSTEEL.NS': '^NSEI',
+    'HINDALCO.NS': '^NSEI',
+    'COALINDIA.NS': '^NSEI',
+    'INDUSINDBK.NS': '^NSEI',
+    
+    # Banking stocks -> NIFTY BANK
+    'HDFCBANK.NS': '^NSEBANK',
+    'ICICIBANK.NS': '^NSEBANK',
+    'KOTAKBANK.NS': '^NSEBANK',
+    'SBIN.NS': '^NSEBANK',
+    'AXISBANK.NS': '^NSEBANK',
+    'INDUSINDBK.NS': '^NSEBANK',
+    'BANDHANBNK.NS': '^NSEBANK',
+    'FEDERALBNK.NS': '^NSEBANK',
+    'IDFCFIRSTB.NS': '^NSEBANK',
+    'PNB.NS': '^NSEBANK',
+    
+    # US Stocks -> S&P 500
+    'AAPL': '^GSPC',
+    'MSFT': '^GSPC',
+    'GOOGL': '^GSPC',
+    'AMZN': '^GSPC',
+    'META': '^GSPC',
+    'TSLA': '^GSPC',
+    'NVDA': '^GSPC',
+    'JPM': '^GSPC',
+    'V': '^GSPC',
+    'JNJ': '^GSPC',
+    'WMT': '^GSPC',
+    'PG': '^GSPC',
+    'MA': '^GSPC',
+    'HD': '^GSPC',
+    'BAC': '^GSPC',
+    'DIS': '^GSPC',
+    'NFLX': '^GSPC',
+    'CSCO': '^GSPC',
+}
+
+
 _nse_fetcher = None
 _yf_fetcher = None
 
@@ -182,6 +250,26 @@ def get_yf_fetcher() -> YFinanceDataFetcher:
     if _yf_fetcher is None:
         _yf_fetcher = YFinanceDataFetcher()
     return _yf_fetcher
+
+
+def get_parent_index(ticker: str) -> Optional[str]:
+    """
+    Get the parent index for a stock ticker.
+    Returns None if ticker is already an index or not found.
+    """
+    # If it's already an index, return None
+    if ticker.startswith('^') or ticker in ['NIFTY_FIN_SERVICE.NS', 'NIFTY_MID_SELECT.NS']:
+        return None
+    
+    # Return mapped index or default based on ticker suffix
+    if ticker in STOCK_TO_INDEX_MAP:
+        return STOCK_TO_INDEX_MAP[ticker]
+    
+    # Default mapping based on ticker pattern
+    if ticker.endswith('.NS') or ticker.endswith('.BO'):
+        return '^NSEI'  # Default to NIFTY for Indian stocks
+    else:
+        return '^GSPC'  # Default to S&P 500 for US stocks
 
 
 def fetch_oi_pcr(ticker: str = None) -> Optional[float]:
@@ -207,3 +295,51 @@ def fetch_market_breadth(ticker: str = None) -> Optional[Dict[str, int]]:
     else:
         fetcher = get_yf_fetcher()
         return fetcher.fetch_market_breadth_us()
+
+
+def fetch_market_breadth_enhanced(ticker: str = None) -> Optional[Dict[str, any]]:
+    """
+    Enhanced market breadth fetcher that handles both indices and stocks.
+    
+    For indices: Returns direct breadth calculation
+    For stocks: Returns parent index breadth + contextual info
+    
+    Args:
+        ticker: Stock or index ticker symbol
+        
+    Returns:
+        dict with breadth data plus context:
+        {
+            'advances': int,
+            'declines': int,
+            'unchanged': int,
+            'type': 'direct' | 'contextual',
+            'reference_index': str,
+            'ticker': str (only for contextual)
+        }
+    """
+    is_index = ticker and (
+        ticker.startswith('^') or 
+        ticker in ['NIFTY_FIN_SERVICE.NS', 'NIFTY_MID_SELECT.NS']
+    )
+    
+    if is_index:
+        # Direct breadth calculation for indices
+        breadth = fetch_market_breadth(ticker)
+        if breadth:
+            breadth['type'] = 'direct'
+            breadth['reference_index'] = ticker
+            print(f"✓ Fetched direct market breadth for index {ticker}")
+        return breadth
+    else:
+        # For stocks, get parent index breadth
+        parent_index = get_parent_index(ticker)
+        if parent_index:
+            breadth = fetch_market_breadth(parent_index)
+            if breadth:
+                breadth['type'] = 'contextual'
+                breadth['reference_index'] = parent_index
+                breadth['ticker'] = ticker
+                print(f"✓ Fetched contextual market breadth for {ticker} from {parent_index}")
+            return breadth
+        return None

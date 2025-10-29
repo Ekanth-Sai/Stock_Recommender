@@ -79,7 +79,7 @@ def get_stock_prediction_data(ticker: str):
             },
             "historicalIndicators": historical_indicators,
             "prediction": prediction_result,
-            "indicators": {},
+            "indicators": prediction_result.get('detailed_analyses', {}),
             "interval_type": interval_type,
         }
 
@@ -151,7 +151,7 @@ def get_index_pre_analysis_data(ticker: str):
             },
             "historicalIndicators": historical_indicators,
             "prediction": prediction_result,
-            "indicators": {},
+            "indicators": prediction_result.get('detailed_analyses', {}),
             "interval_type": interval_type,
         }
 
