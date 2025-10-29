@@ -140,20 +140,20 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
 
                 {/* MACD */}
                 {macd !== null && detailed_analyses?.macd && renderIndicatorCard(
-                    'MACD',
+                    'MACD(8,17,6)',
                     `${macd} / ${macds}`,
                     detailed_analyses.macd,
                     <div className="macd-details">
                         <div className="macd-row">
-                            <span>MACD Line:</span>
+                            <span>MACD Line (8,17,6):</span>
                             <strong>{macd}</strong>
                         </div>
                         <div className="macd-row">
-                            <span>Signal Line:</span>
+                            <span>Signal Line (8,17,6):</span>
                             <strong>{macds}</strong>
                         </div>
                         <div className="macd-row">
-                            <span>Histogram:</span>
+                            <span>Histogram (8,17,6):</span>
                             <strong style={{ color: macdh >= 0 ? '#4caf50' : '#f44336' }}>
                                 {macdh}
                             </strong>
@@ -217,9 +217,19 @@ const IndicatorsSidebar = ({ indicators, tickerType }) => {
 
                 {/* NEW: OI PCR */}
                 {detailed_analyses?.oi_pcr && renderIndicatorCard(
-                    'OI PCR',
+                    'OI PCR (Put/Call Ratio)',
                     detailed_analyses.oi_pcr.current_value.toFixed(2),
-                    detailed_analyses.oi_pcr
+                    detailed_analyses.oi_pcr,
+                    <div className="oi-pcr-details">
+                        <div className="bb-row">
+                            <span>OI PCR Value: </span>
+                            <strong>{detailed_analyses.oi_pcr.current_value.toFixed(2)}</strong>
+                        </div>
+                        <div className="bb-row">
+                            <span>Explanation: </span>
+                            <strong>{detailed_analyses.oi_pcr.rule_based_explanation}</strong>
+                        </div>
+                    </div>
                 )}
 
                 {/* NEW: Market Breadth */}

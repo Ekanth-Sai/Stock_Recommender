@@ -50,14 +50,6 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, ticker: str = None):
-    """
-    Get prediction with confidence scores and detailed analysis.
-    
-    Args:
-        data: DataFrame with technical indicators calculated
-        enable_llm: Whether to use LLM for enhanced explanations
-        ticker: Stock/index ticker symbol (for fetching OI PCR and market breadth)
-    """
     latest_rsi = data["RSI_7"].iloc[-1] if "RSI_7" in data.columns and not data["RSI_7"].empty else None
     latest_macd = data["MACD_8_17_6"].iloc[-1] if "MACD_8_17_6" in data.columns and not data["MACD_8_17_6"].empty else None
     latest_macdh = data["MACDh_8_17_6"].iloc[-1] if "MACDh_8_17_6" in data.columns and not data["MACDh_8_17_6"].empty else None
@@ -82,7 +74,6 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, 
         'close': latest_close,
     }
 
-    # FIXED: Fetch OI PCR and Market Breadth data if available
     if DATA_FETCHERS_AVAILABLE and ticker:
         try:
             oi_pcr = fetch_oi_pcr(ticker)
@@ -102,7 +93,6 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, 
         except Exception as e:
             print(f"Could not fetch market breadth data: {e}")
 
-    # Remove None values
     indicators = {k: v for k, v in indicators.items() if v is not None and not pd.isna(v)}
     
     gemini_api_key = os.getenv('GEMINI_API_KEY')
@@ -111,19 +101,19 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, 
         enable_llm=enable_llm and gemini_api_key is not None
     )
 
-    # FIXED: Pass hist_data to enable candle pattern analysis
     analyses = orchestrator.analyze_all_indicators(indicators, hist_data=data)
     
     response = {
         "rsi": round(latest_rsi, 2) if latest_rsi is not None and not pd.isna(latest_rsi) else None,
-        "macd": round(latest_macd, 2) if latest_macd is not None and not pd.isna(latest_macd) else None,
-        "macdh": round(latest_macdh, 2) if latest_macdh is not None and not pd.isna(latest_macdh) else None,
-        "macds": round(latest_macds, 2) if latest_macds is not None and not pd.isna(latest_macds) else None,
+        "macd_8_17_6": round(latest_macd, 2) if latest_macd is not None and not pd.isna(latest_macd) else None,
+        "macdh_8_17_6": round(latest_macdh, 2) if latest_macdh is not None and not pd.isna(latest_macdh) else None,
+        "macds_8_17_6": round(latest_macds, 2) if latest_macds is not None and not pd.isna(latest_macds) else None,
         "bb_lower": round(latest_bb_lower, 2) if latest_bb_lower is not None and not pd.isna(latest_bb_lower) else None,
         "bb_middle": round(latest_bb_middle, 2) if latest_bb_middle is not None and not pd.isna(latest_bb_middle) else None,
         "bb_upper": round(latest_bb_upper, 2) if latest_bb_upper is not None and not pd.isna(latest_bb_upper) else None,
         "stoch_k": round(latest_stoch_k, 2) if latest_stoch_k is not None and not pd.isna(latest_stoch_k) else None,
         "stoch_d": round(latest_stoch_d, 2) if latest_stoch_d is not None and not pd.isna(latest_stoch_d) else None,
+        "oi_pcr": indicators.get('oi_pcr'),
     }
     
     response["detailed_analyses"] = _format_analyses_for_frontend(analyses)

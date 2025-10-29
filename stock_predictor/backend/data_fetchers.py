@@ -9,17 +9,24 @@ class NSEDataFetcher:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Host': 'www.nseindia.com',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
+            'X-Requested-With': 'XMLHttpRequest',
         })
+        self._refresh_session()
+
+    def _refresh_session(self):
         try:
-            self.session.get(self.BASE_URL, timeout=5)
-        except:
-            pass
+            self.session.get(self.BASE_URL, timeout=10)
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to refresh NSE session: {e}")
     
     def fetch_oi_pcr(self, symbol: str = "NIFTY") -> Optional[float]:
         try:
+            self._refresh_session()
             url = f"{self.BASE_URL}/api/option-chain-indices?symbol={symbol}"
             
             response = self.session.get(url, timeout=10)
@@ -59,6 +66,7 @@ class NSEDataFetcher:
     
     def fetch_market_breadth(self) -> Optional[Dict[str, int]]:
         try:
+            self._refresh_session()
             url = f"{self.BASE_URL}/api/market-data-pre-open?key=ALL"
             
             response = self.session.get(url, timeout=10)
