@@ -1,6 +1,8 @@
 import requests
 from typing import Optional, Dict
 import time
+import os
+import finnhub 
 
 
 class NSEDataFetcher:
@@ -18,11 +20,76 @@ class NSEDataFetcher:
         })
         self._refresh_session()
 
+    def fetch_market_breadth(self) -> Optional[Dict[str, int]]:
+        try:
+            self._refresh_session()
+            url = f"{self.BASE_URL}/api/market-data-pre-open?key=ALL"
+
+            response = self.session.get(url, timeout = 10)
+
+            if response.status_code != 200:
+                print(f"Failed to fetch market breadth: Status {response.status_code}")
+                return None 
+
+            data = response.json()
+            advances = 0
+            declines = 0
+            unchanged = 0
+
+            if "data" in data:
+                for index in data["data"]:
+                    if "metadata" not in index:
+                        continue
+                    meta = index["metadata"]
+
+                    if "advances" in meta and "declines" in meta and "unchanged" in meta:
+                        advances += int(meta.get("advances", 0))
+                        declines += int(meta.get("declines", 0))
+                        unchanged += int(meta.get("unchanged", 0))
+            
+            if advances + declines + unchanged > 0:
+                print(f"NSE Market Breadth: Advances = {advances}, Declines = {declines}, Unchanged = {unchanged}")
+
+                return {
+                    "advances": advances,
+                    "declines": declines,
+                    "unchanged": unchanged
+                }
+            
+            print("NSE breadth data not found in response format")
+            return None
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Network error fetching NSE market breadth: {e}")
+            return None
+        except Exception as e:
+            print(f"Error fetching NSE market breadth: {e}")
+            return None
+
+
     def _refresh_session(self):
         try:
-            self.session.get(self.BASE_URL, timeout=10)
-        except requests.exceptions.RequestException as e:
+            base_headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/122.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Connection": "keep-alive",
+            }
+
+            # Hit homepage to refresh cookies
+            homepage = f"{self.BASE_URL}/"
+            resp = self.session.get(homepage, headers=base_headers, timeout=10)
+
+            if resp.status_code == 200:
+                print("NSE session refreshed successfully.")
+            else:
+                print(f"NSE session refresh returned {resp.status_code}")
+        except Exception as e:
             print(f"Failed to refresh NSE session: {e}")
+
     
     def fetch_oi_pcr(self, symbol: str = "NIFTY") -> Optional[float]:
         try:
@@ -64,63 +131,10 @@ class NSEDataFetcher:
             print(f"Error calculating OI PCR: {e}")
             return None
     
-    def fetch_market_breadth(self) -> Optional[Dict[str, int]]:
-        try:
-            self._refresh_session()
-            url = f"{self.BASE_URL}/api/market-data-pre-open?key=ALL"
-            
-            response = self.session.get(url, timeout=10)
-            
-            if response.status_code != 200:
-                print(f"Failed to fetch market breadth: Status {response.status_code}")
-                return None
-            
-            data = response.json()
-
-            advances = 0
-            declines = 0
-            unchanged = 0
-            
-            if 'data' in data:
-                for stock in data['data']:
-                    if 'change' in stock:
-                        change = stock['change']
-                        if change > 0:
-                            advances += 1
-                        elif change < 0:
-                            declines += 1
-                        else:
-                            unchanged += 1
-            
-            if advances > 0 or declines > 0:
-                print(f"Market Breadth - Advances: {advances}, Declines: {declines}, Unchanged: {unchanged}")
-                return {
-                    'advances': advances,
-                    'declines': declines,
-                    'unchanged': unchanged
-                }
-            
-            return None
-            
-        except requests.exceptions.RequestException as e:
-            print(f"Network error fetching market breadth: {e}")
-            return None
-        except Exception as e:
-            print(f"Error fetching market breadth: {e}")
-            return None
-
 
 class YFinanceDataFetcher:
     @staticmethod
     def fetch_market_breadth_us() -> Optional[Dict[str, int]]:
-        """
-        Fetch market breadth for US markets.
-        Note: This is a simplified implementation.
-        For production, use dedicated market data APIs.
-        
-        Returns:
-            dict: {'advances': int, 'declines': int, 'unchanged': int} or None
-        """
         try:
             import yfinance as yf
     
@@ -253,11 +267,6 @@ def get_yf_fetcher() -> YFinanceDataFetcher:
 
 
 def get_parent_index(ticker: str) -> Optional[str]:
-    """
-    Get the parent index for a stock ticker.
-    Returns None if ticker is already an index or not found.
-    """
-    # If it's already an index, return None
     if ticker.startswith('^') or ticker in ['NIFTY_FIN_SERVICE.NS', 'NIFTY_MID_SELECT.NS']:
         return None
     
@@ -288,58 +297,149 @@ def fetch_oi_pcr(ticker: str = None) -> Optional[float]:
     return None
 
 
-def fetch_market_breadth(ticker: str = None) -> Optional[Dict[str, int]]:
-    if ticker and (ticker.startswith('^NSE') or ticker.endswith('.NS')):
-        fetcher = get_nse_fetcher()
-        return fetcher.fetch_market_breadth()
-    else:
-        fetcher = get_yf_fetcher()
-        return fetcher.fetch_market_breadth_us()
+# def fetch_market_breadth(self) -> Optional[Dict[str, int]]:
+#     try:
+#         self._refresh_session()
+#         url = f"{self.BASE_URL}/api/market-data-pre-open?key=ALL"
+
+#         response = self.session.get(url, timeout = 10)
+
+#         if response.status_code != 200:
+#             print(f"Failed to fetch market breadth: Status {response.status_code}")
+#             return None 
+
+#         data = response.json()
+#         advances = 0
+#         declines = 0
+#         unchanged = 0
+
+#         if "data" in data:
+#             for index in data["data"]:
+#                 if "metadata" not in index:
+#                     continue
+#                 meta = index["metadata"]
+
+#                 if "advances" in meta and "declines" in meta and "unchanged" in meta:
+#                     advances += int(meta.get("advances", 0))
+#                     declines += int(meta.get("declines", 0))
+#                     unchanged += int(meta.get("unchanged", 0))
+        
+#         if advances + declines + unchanged > 0:
+#             print(f"NSE Market Breadth: Advances = {advances}, Declines = {declines}, Unchanged = {unchanged}")
+
+#             return {
+#                 "advances": advances,
+#                 "declines": declines,
+#                 "unchanged": unchanged
+#             }
+        
+#         print("NSE breadth data not found in response format")
+#         return None
+    
+#     except requests.exceptions.RequestException as e:
+#         print(f"Network error fetching NSE market breadth: {e}")
+#         return None
+#     except Exception as e:
+#         print(f"Error fetching NSE market breadth: {e}")
+#         return None
+    # if ticker and (ticker.startswith('^NSE') or ticker.endswith('.NS')):
+    #     fetcher = get_nse_fetcher()
+    #     return fetcher.fetch_market_breadth()
+    # else:
+    #     fetcher = get_yf_fetcher()
+    #     return fetcher.fetch_market_breadth_us()
 
 
 def fetch_market_breadth_enhanced(ticker: str = None) -> Optional[Dict[str, any]]:
-    """
-    Enhanced market breadth fetcher that handles both indices and stocks.
-    
-    For indices: Returns direct breadth calculation
-    For stocks: Returns parent index breadth + contextual info
-    
-    Args:
-        ticker: Stock or index ticker symbol
-        
-    Returns:
-        dict with breadth data plus context:
-        {
-            'advances': int,
-            'declines': int,
-            'unchanged': int,
-            'type': 'direct' | 'contextual',
-            'reference_index': str,
-            'ticker': str (only for contextual)
-        }
-    """
+    nse_fetcher = get_nse_fetcher()
+    yf_fetcher = get_yf_fetcher()
+
     is_index = ticker and (
         ticker.startswith('^') or 
         ticker in ['NIFTY_FIN_SERVICE.NS', 'NIFTY_MID_SELECT.NS']
     )
-    
-    if is_index:
-        # Direct breadth calculation for indices
-        breadth = fetch_market_breadth(ticker)
-        if breadth:
-            breadth['type'] = 'direct'
-            breadth['reference_index'] = ticker
-            print(f"✓ Fetched direct market breadth for index {ticker}")
-        return breadth
-    else:
-        # For stocks, get parent index breadth
-        parent_index = get_parent_index(ticker)
-        if parent_index:
-            breadth = fetch_market_breadth(parent_index)
+
+    breadth = None
+
+    try:
+        # --- Try fetching from NSE if Indian ticker ---
+        if ticker and (ticker.endswith('.NS') or ticker.startswith('^NSE')):
+            breadth = nse_fetcher.fetch_market_breadth()
             if breadth:
+                breadth['source'] = 'NSE API'
+            else:
+                print(f"⚠️ NSE fetch failed for {ticker} (401/403 likely)")
+
+        # --- Try yfinance for global tickers ---
+        elif ticker and any(x in ticker for x in ['^GSPC', 'AAPL', 'MSFT', 'GOOGL']):
+            breadth = yf_fetcher.fetch_market_breadth_us()
+            if breadth:
+                breadth['source'] = 'Yahoo Finance'
+
+        # --- Fallback to Finnhub if nothing worked ---
+        # --- Fallback to Finnhub if nothing worked ---
+        if not breadth:
+            print(f"⚠️ Falling back to Finnhub for {ticker}")
+            finnhub_key = os.getenv("FINNHUB_API_KEY")
+            if finnhub_key:
+                try:
+                    client = finnhub.Client(api_key=finnhub_key)
+
+                    # Get NIFTY 50 constituents (Finnhub symbol = ^NSEI)
+                    constituents = client.index_const(symbol="^NSEI")
+                    stocks = constituents.get("constituents", [])
+
+                    advances = declines = unchanged = 0
+
+                    for stock in stocks[:50]:  # Limit to top 50 to stay within API limits
+                        try:
+                            quote = client.quote(stock)
+                            current_price = quote.get("c", 0)
+                            prev_close = quote.get("pc", 0)
+
+                            if current_price > prev_close:
+                                advances += 1
+                            elif current_price < prev_close:
+                                declines += 1
+                            else:
+                                unchanged += 1
+
+                            time.sleep(0.1)  # avoid rate limit (60 calls/min free tier)
+                        except Exception as e:
+                            continue
+
+                    if advances + declines > 0:
+                        breadth = {
+                            "advances": advances,
+                            "declines": declines,
+                            "unchanged": unchanged,
+                            "source": "Finnhub (computed)"
+                        }
+                        print(f"✓ Finnhub fallback breadth computed: Adv={advances}, Dec={declines}, Unch={unchanged}")
+                    else:
+                        print("⚠️ No breadth data available from Finnhub fallback")
+
+                except Exception as e:
+                    print(f"❌ Finnhub fallback failed: {e}")
+
+
+        # --- Enrich & Return ---
+        if breadth:
+            if is_index:
+                breadth['type'] = 'direct'
+                breadth['reference_index'] = ticker
+                print(f"✓ Direct breadth for {ticker} ({breadth['source']})")
+            else:
+                parent_index = get_parent_index(ticker)
                 breadth['type'] = 'contextual'
-                breadth['reference_index'] = parent_index
+                breadth['reference_index'] = parent_index or 'Unknown'
                 breadth['ticker'] = ticker
-                print(f"✓ Fetched contextual market breadth for {ticker} from {parent_index}")
+                print(f"✓ Contextual breadth for {ticker} (via {breadth['source']})")
             return breadth
+
+        print(f"⚠️ Could not fetch breadth for {ticker} (all sources failed)")
+        return None
+
+    except Exception as e:
+        print(f"❌ Error in fetch_market_breadth_enhanced: {e}")
         return None
