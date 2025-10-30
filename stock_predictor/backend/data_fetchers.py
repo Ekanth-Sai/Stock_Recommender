@@ -362,36 +362,30 @@ def fetch_market_breadth_enhanced(ticker: str = None) -> Optional[Dict[str, any]
     breadth = None
 
     try:
-        # --- Try fetching from NSE if Indian ticker ---
         if ticker and (ticker.endswith('.NS') or ticker.startswith('^NSE')):
             breadth = nse_fetcher.fetch_market_breadth()
             if breadth:
                 breadth['source'] = 'NSE API'
             else:
-                print(f"⚠️ NSE fetch failed for {ticker} (401/403 likely)")
+                print(f"NSE fetch failed for {ticker} (401/403 likely)")
 
-        # --- Try yfinance for global tickers ---
         elif ticker and any(x in ticker for x in ['^GSPC', 'AAPL', 'MSFT', 'GOOGL']):
             breadth = yf_fetcher.fetch_market_breadth_us()
             if breadth:
                 breadth['source'] = 'Yahoo Finance'
 
-        # --- Fallback to Finnhub if nothing worked ---
-        # --- Fallback to Finnhub if nothing worked ---
         if not breadth:
-            print(f"⚠️ Falling back to Finnhub for {ticker}")
+            print(f"Falling back to Finnhub for {ticker}")
             finnhub_key = os.getenv("FINNHUB_API_KEY")
             if finnhub_key:
                 try:
                     client = finnhub.Client(api_key=finnhub_key)
-
-                    # Get NIFTY 50 constituents (Finnhub symbol = ^NSEI)
                     constituents = client.index_const(symbol="^NSEI")
                     stocks = constituents.get("constituents", [])
 
                     advances = declines = unchanged = 0
 
-                    for stock in stocks[:50]:  # Limit to top 50 to stay within API limits
+                    for stock in stocks[:50]:  
                         try:
                             quote = client.quote(stock)
                             current_price = quote.get("c", 0)
@@ -404,7 +398,7 @@ def fetch_market_breadth_enhanced(ticker: str = None) -> Optional[Dict[str, any]
                             else:
                                 unchanged += 1
 
-                            time.sleep(0.1)  # avoid rate limit (60 calls/min free tier)
+                            time.sleep(0.1)  
                         except Exception as e:
                             continue
 
@@ -415,31 +409,29 @@ def fetch_market_breadth_enhanced(ticker: str = None) -> Optional[Dict[str, any]
                             "unchanged": unchanged,
                             "source": "Finnhub (computed)"
                         }
-                        print(f"✓ Finnhub fallback breadth computed: Adv={advances}, Dec={declines}, Unch={unchanged}")
+                        print(f"Finnhub fallback breadth computed: Adv={advances}, Dec={declines}, Unch={unchanged}")
                     else:
-                        print("⚠️ No breadth data available from Finnhub fallback")
+                        print("No breadth data available from Finnhub fallback")
 
                 except Exception as e:
-                    print(f"❌ Finnhub fallback failed: {e}")
+                    print(f"Finnhub fallback failed: {e}")
 
-
-        # --- Enrich & Return ---
         if breadth:
             if is_index:
                 breadth['type'] = 'direct'
                 breadth['reference_index'] = ticker
-                print(f"✓ Direct breadth for {ticker} ({breadth['source']})")
+                print(f"Direct breadth for {ticker} ({breadth['source']})")
             else:
                 parent_index = get_parent_index(ticker)
                 breadth['type'] = 'contextual'
                 breadth['reference_index'] = parent_index or 'Unknown'
                 breadth['ticker'] = ticker
-                print(f"✓ Contextual breadth for {ticker} (via {breadth['source']})")
+                print(f"Contextual breadth for {ticker} (via {breadth['source']})")
             return breadth
 
-        print(f"⚠️ Could not fetch breadth for {ticker} (all sources failed)")
+        print(f"Could not fetch breadth for {ticker} (all sources failed)")
         return None
 
     except Exception as e:
-        print(f"❌ Error in fetch_market_breadth_enhanced: {e}")
+        print(f"Error in fetch_market_breadth_enhanced: {e}")
         return None
