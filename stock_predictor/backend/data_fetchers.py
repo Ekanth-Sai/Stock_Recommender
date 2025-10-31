@@ -3,7 +3,173 @@ from typing import Optional, Dict
 import time
 import os
 import finnhub 
+from dhanhq import dhanhq 
 
+import os
+from typing import Optional
+from dhanhq import dhanhq
+
+class DhanDataFetcher:
+    SECURITY_IDS = {
+        'NIFTY': 13,        
+        'BANKNIFTY': 25,    
+        'FINNIFTY': 27,     
+        'MIDCPNIFTY': 28,   
+    }
+    
+
+    EXCHANGE_SEGMENT = dhanhq.FNO  
+    
+    def __init__(self):
+        self.client_id = os.getenv('DHAN_CLIENT_ID')
+        self.access_token = os.getenv('DHAN_ACCESS_TOKEN')
+        
+        if not self.client_id or not self.access_token:
+            print("Warning: Dhan API credentials not found in environment variables")
+            print("Set DHAN_CLIENT_ID and DHAN_ACCESS_TOKEN to use Dhan API")
+            self.dhan = None
+        else:
+            try:
+                self.dhan = dhanhq(self.client_id, self.access_token)
+                print("Dhan API client initialized successfully")
+            except Exception as e:
+                print(f"Failed to initialize Dhan client: {e}")
+                self.dhan = None
+    
+    def fetch_option_chain(self, symbol: str = "NIFTY") -> Optional[dict]:
+        if not self.dhan:
+            print("Dhan client not initialized")
+            return None
+        
+        symbol = symbol.upper()
+        if symbol not in self.SECURITY_IDS:
+            print(f"Symbol {symbol} not supported. Available: {list(self.SECURITY_IDS.keys())}")
+            return None
+        
+        try:
+            security_id = self.SECURITY_IDS[symbol]
+            
+            option_chain = self.dhan.get_option_chain(
+                security_id=security_id,
+                exchange_segment=self.EXCHANGE_SEGMENT
+            )
+            
+            if option_chain and 'data' in option_chain:
+                print(f"Successfully fetched option chain for {symbol}")
+                return option_chain
+            else:
+                print(f"No option chain data available for {symbol}")
+                return None
+                
+        except Exception as e:
+            print(f"Error fetching option chain for {symbol}: {e}")
+            return None
+    
+    def calculate_oi_pcr(self, symbol: str = "NIFTY") -> Optional[float]:
+        option_chain = self.fetch_option_chain(symbol)
+        
+        if not option_chain or 'data' not in option_chain:
+            return None
+        
+        try:
+            total_put_oi = 0
+            total_call_oi = 0
+            
+            for strike_data in option_chain['data']:
+                if 'put_options' in strike_data:
+                    put_oi = strike_data['put_options'].get('open_interest', 0)
+                    total_put_oi += put_oi
+                
+                if 'call_options' in strike_data:
+                    call_oi = strike_data['call_options'].get('open_interest', 0)
+                    total_call_oi += call_oi
+            
+            if total_call_oi > 0:
+                pcr = total_put_oi / total_call_oi
+                print(f"OI PCR for {symbol}: {pcr:.4f}")
+                print(f"  Total Put OI: {total_put_oi:,}")
+                print(f"  Total Call OI: {total_call_oi:,}")
+                return pcr
+            else:
+                print(f"No call open interest data for {symbol}")
+                return None
+                
+        except Exception as e:
+            print(f"Error calculating OI PCR for {symbol}: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def get_atm_strike_pcr(self, symbol: str = "NIFTY", spot_price: float = None) -> Optional[dict]:
+        option_chain = self.fetch_option_chain(symbol)
+        
+        if not option_chain or 'data' not in option_chain:
+            return None
+        
+        try:
+            strikes = option_chain['data']
+            
+            if spot_price is None:
+                mid_idx = len(strikes) // 2
+                atm_range = strikes[max(0, mid_idx-2):min(len(strikes), mid_idx+3)]
+            else:
+                atm_range = [s for s in strikes 
+                           if abs(s.get('strike_price', 0) - spot_price) <= spot_price * 0.02]
+            
+            atm_put_oi = 0
+            atm_call_oi = 0
+            
+            for strike in atm_range:
+                if 'put_options' in strike:
+                    atm_put_oi += strike['put_options'].get('open_interest', 0)
+                if 'call_options' in strike:
+                    atm_call_oi += strike['call_options'].get('open_interest', 0)
+            
+            if atm_call_oi > 0:
+                atm_pcr = atm_put_oi / atm_call_oi
+                return {
+                    'atm_pcr': atm_pcr,
+                    'atm_put_oi': atm_put_oi,
+                    'atm_call_oi': atm_call_oi,
+                    'strikes_considered': len(atm_range)
+                }
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error calculating ATM PCR: {e}")
+            return None
+
+
+_dhan_fetcher = None
+
+def get_dhan_fetcher() -> DhanDataFetcher:
+    global _dhan_fetcher
+    if _dhan_fetcher is None:
+        _dhan_fetcher = DhanDataFetcher()
+    return _dhan_fetcher
+
+
+def fetch_oi_pcr_dhan(ticker: str = None) -> Optional[float]:
+    ticker_to_dhan = {
+        '^NSEI': 'NIFTY',
+        '^NSEBANK': 'BANKNIFTY',
+        'NIFTY_FIN_SERVICE.NS': 'FINNIFTY',
+        'NIFTY_MID_SELECT.NS': 'MIDCPNIFTY',
+    }
+    
+    if ticker not in ticker_to_dhan:
+        print(f"OI PCR not available for {ticker} via Dhan API")
+        return None
+    
+    dhan_symbol = ticker_to_dhan[ticker]
+    fetcher = get_dhan_fetcher()
+    
+    if not fetcher.dhan:
+        print("Dhan API not available, falling back to NSE fetcher")
+        return fetch_oi_pcr(ticker)
+    
+    return fetcher.calculate_oi_pcr(dhan_symbol)
 
 class NSEDataFetcher:
     BASE_URL = "https://www.nseindia.com"
@@ -179,10 +345,7 @@ class YFinanceDataFetcher:
             print(f"Error fetching US market breadth: {e}")
             return None
 
-
-# Stock to Index Mapping
 STOCK_TO_INDEX_MAP = {
-    # Indian Stocks -> NIFTY 50
     'RELIANCE.NS': '^NSEI',
     'TCS.NS': '^NSEI',
     'INFY.NS': '^NSEI',
@@ -214,7 +377,6 @@ STOCK_TO_INDEX_MAP = {
     'COALINDIA.NS': '^NSEI',
     'INDUSINDBK.NS': '^NSEI',
     
-    # Banking stocks -> NIFTY BANK
     'HDFCBANK.NS': '^NSEBANK',
     'ICICIBANK.NS': '^NSEBANK',
     'KOTAKBANK.NS': '^NSEBANK',
@@ -226,7 +388,6 @@ STOCK_TO_INDEX_MAP = {
     'IDFCFIRSTB.NS': '^NSEBANK',
     'PNB.NS': '^NSEBANK',
     
-    # US Stocks -> S&P 500
     'AAPL': '^GSPC',
     'MSFT': '^GSPC',
     'GOOGL': '^GSPC',
@@ -270,15 +431,13 @@ def get_parent_index(ticker: str) -> Optional[str]:
     if ticker.startswith('^') or ticker in ['NIFTY_FIN_SERVICE.NS', 'NIFTY_MID_SELECT.NS']:
         return None
     
-    # Return mapped index or default based on ticker suffix
     if ticker in STOCK_TO_INDEX_MAP:
         return STOCK_TO_INDEX_MAP[ticker]
-    
-    # Default mapping based on ticker pattern
+
     if ticker.endswith('.NS') or ticker.endswith('.BO'):
-        return '^NSEI'  # Default to NIFTY for Indian stocks
+        return '^NSEI'
     else:
-        return '^GSPC'  # Default to S&P 500 for US stocks
+        return '^GSPC'
 
 
 def fetch_oi_pcr(ticker: str = None) -> Optional[float]:
@@ -286,15 +445,24 @@ def fetch_oi_pcr(ticker: str = None) -> Optional[float]:
         '^NSEI': 'NIFTY',
         '^NSEBANK': 'BANKNIFTY',
         'NIFTY_FIN_SERVICE.NS': 'FINNIFTY',
+        'NIFTY_MID_SELECT.NS': 'MIDCPNIFTY',
     }
     
-    if ticker in indian_indices:
-        symbol = indian_indices[ticker]
-        fetcher = get_nse_fetcher()
-        return fetcher.fetch_oi_pcr(symbol)
+    if ticker not in indian_indices:
+        print(f"OI PCR not available for {ticker}")
+        return None
     
-    print(f"OI PCR not available for {ticker}")
-    return None
+    try:
+        pcr = fetch_oi_pcr_dhan(ticker)
+        if pcr is not None:
+            return pcr
+    except Exception as e:
+        print(f"Dhan API failed: {e}")
+    
+    print("Falling back to NSE API for OI PCR")
+    symbol = indian_indices[ticker]
+    fetcher = get_nse_fetcher()
+    return fetcher.fetch_oi_pcr(symbol)
 
 
 # def fetch_market_breadth(self) -> Optional[Dict[str, int]]:

@@ -75,7 +75,6 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, 
     }
 
     if DATA_FETCHERS_AVAILABLE and ticker:
-        # Fetch OI PCR (only for Indian indices)
         try:
             oi_pcr = fetch_oi_pcr(ticker)
             if oi_pcr is not None:
@@ -84,7 +83,6 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, 
         except Exception as e:
             print(f"Could not fetch OI PCR data: {e}")
         
-        # Fetch Enhanced Market Breadth (works for both indices and stocks)
         try:
             breadth = fetch_market_breadth_enhanced(ticker)
             if breadth:
@@ -138,9 +136,6 @@ def get_prediction_with_confidence(data: pd.DataFrame, enable_llm: bool = True, 
 
 
 def _format_analyses_for_frontend(analyses: dict) -> dict:
-    """
-    Format analysis results for frontend display.
-    """
     formatted = {}
     
     for indicator_key, analysis in analyses.items():

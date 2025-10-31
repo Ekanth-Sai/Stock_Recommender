@@ -1,6 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from services import get_stock_prediction_data, get_index_pre_analysis_data
+from dotenv import load_dotenv 
+import os 
+
+load_dotenv()
 
 app = FastAPI()
 
