@@ -2,7 +2,7 @@ annotated-types==0.7.0
 anyio==4.10.0
 beautifulsoup4==4.13.5
 bidict==0.23.1
-certifi==2025.8.3
+certifi==2026.10.18
 cffi==2.0.0
 charset-normalizer==3.4.3
 click==8.2.1
